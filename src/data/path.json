@@ -1,0 +1,67 @@
+{
+  "stages": [
+    {
+      "id": "stage0",
+      "title": "第一步 · 发音基础",
+      "subtitle": "先听懂、读准粤拼——过了声母韵母这一关",
+      "units": [
+        { "type": "tones", "ref": "intro", "title": "六个声调", "emoji": "🎵" },
+        { "type": "pinyin", "ref": "initials", "title": "声母 19 个", "emoji": "🔤" },
+        { "type": "pinyin", "ref": "finals", "title": "韵母全表", "emoji": "🔡" },
+        { "type": "tonedrill", "ref": "drill", "title": "听辨过关", "emoji": "👂" }
+      ]
+    },
+    {
+      "id": "stage1",
+      "title": "第二步 · 基础词汇",
+      "subtitle": "数字、时间、人称——说话的积木",
+      "units": [
+        { "type": "basics", "ref": "numbers", "title": "数字", "emoji": "🔢" },
+        { "type": "basics", "ref": "time", "title": "时间", "emoji": "🕐" },
+        { "type": "basics", "ref": "people", "title": "人称", "emoji": "👪" },
+        { "type": "basics", "ref": "colors", "title": "颜色", "emoji": "🎨" },
+        { "type": "basics", "ref": "directions", "title": "方位", "emoji": "🧭" },
+        { "type": "basics", "ref": "food", "title": "食物饮品", "emoji": "🍜" }
+      ]
+    },
+    {
+      "id": "stage2",
+      "title": "第三步 · 生存粤语",
+      "subtitle": "到了香港马上用得上的六个场面",
+      "units": [
+        { "type": "scenario", "ref": "greet", "title": "打招呼", "emoji": "👋" },
+        { "type": "scenario", "ref": "cafe", "title": "茶餐厅点餐", "emoji": "🍞" },
+        { "type": "scenario", "ref": "direction", "title": "问路", "emoji": "🗺️" },
+        { "type": "scenario", "ref": "shopping", "title": "买东西讲价", "emoji": "🛍️" },
+        { "type": "scenario", "ref": "mtr", "title": "坐港铁", "emoji": "🚇" },
+        { "type": "scenario", "ref": "phone", "title": "打电话", "emoji": "📞" }
+      ]
+    },
+    {
+      "id": "stage3",
+      "title": "第四步 · 生活粤语",
+      "subtitle": "住下来之后，每天都会用到的话",
+      "units": [
+        { "type": "scenario", "ref": "market", "title": "菜市场买菜", "emoji": "🥬" },
+        { "type": "scenario", "ref": "taxi", "title": "坐出租车", "emoji": "🚕" },
+        { "type": "scenario", "ref": "doctor", "title": "看医生", "emoji": "🩺" },
+        { "type": "scenario", "ref": "hangout", "title": "约朋友", "emoji": "🎬" },
+        { "type": "scenario", "ref": "home", "title": "家里晚饭", "emoji": "🍚" },
+        { "type": "scenario", "ref": "weather", "title": "聊天气", "emoji": "🌦️" }
+      ]
+    },
+    {
+      "id": "stage4",
+      "title": "第五步 · 进阶粤语",
+      "subtitle": "住得久、聊得深——进阶场面",
+      "units": [
+        { "type": "scenario", "ref": "rent", "title": "租房找楼", "emoji": "🏠" },
+        { "type": "scenario", "ref": "work", "title": "上班职场", "emoji": "💼" },
+        { "type": "scenario", "ref": "dimsum", "title": "喝早茶点心", "emoji": "🥟" },
+        { "type": "scenario", "ref": "pharmacy", "title": "药房买药", "emoji": "💊" },
+        { "type": "scenario", "ref": "bank", "title": "银行换钱", "emoji": "🏦" },
+        { "type": "scenario", "ref": "cny", "title": "新年拜年", "emoji": "🧧" }
+      ]
+    }
+  ]
+}

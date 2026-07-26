@@ -1,0 +1,57 @@
+[
+  {
+    "syllable": "si",
+    "items": [
+      { "tone": 1, "hanzi": "詩", "mandarin": "诗", "jyutping": "si1", "audio": "/audio/tones/si1.mp3" },
+      { "tone": 2, "hanzi": "史", "mandarin": "历史", "jyutping": "si2", "audio": "/audio/tones/si2.mp3" },
+      { "tone": 3, "hanzi": "試", "mandarin": "尝试", "jyutping": "si3", "audio": "/audio/tones/si3.mp3" },
+      { "tone": 4, "hanzi": "時", "mandarin": "时间", "jyutping": "si4", "audio": "/audio/tones/si4.mp3" },
+      { "tone": 5, "hanzi": "市", "mandarin": "城市", "jyutping": "si5", "audio": "/audio/tones/si5.mp3" },
+      { "tone": 6, "hanzi": "事", "mandarin": "事情", "jyutping": "si6", "audio": "/audio/tones/si6.mp3" }
+    ]
+  },
+  {
+    "syllable": "fu",
+    "items": [
+      { "tone": 1, "hanzi": "夫", "mandarin": "丈夫", "jyutping": "fu1", "audio": "/audio/tones/fu1.mp3" },
+      { "tone": 2, "hanzi": "苦", "mandarin": "苦", "jyutping": "fu2", "audio": "/audio/tones/fu2.mp3" },
+      { "tone": 3, "hanzi": "褲", "mandarin": "裤子", "jyutping": "fu3", "audio": "/audio/tones/fu3.mp3" },
+      { "tone": 4, "hanzi": "扶", "mandarin": "搀扶", "jyutping": "fu4", "audio": "/audio/tones/fu4.mp3" },
+      { "tone": 5, "hanzi": "婦", "mandarin": "妇女", "jyutping": "fu5", "audio": "/audio/tones/fu5.mp3" },
+      { "tone": 6, "hanzi": "父", "mandarin": "父亲", "jyutping": "fu6", "audio": "/audio/tones/fu6.mp3" }
+    ]
+  },
+  {
+    "syllable": "jau",
+    "items": [
+      { "tone": 1, "hanzi": "優", "mandarin": "优秀", "jyutping": "jau1", "audio": "/audio/tones/jau1.mp3" },
+      { "tone": 2, "hanzi": "酒", "mandarin": "酒", "jyutping": "jau2", "audio": "/audio/tones/jau2.mp3" },
+      { "tone": 3, "hanzi": "幼", "mandarin": "幼小", "jyutping": "jau3", "audio": "/audio/tones/jau3.mp3" },
+      { "tone": 4, "hanzi": "油", "mandarin": "油", "jyutping": "jau4", "audio": "/audio/tones/jau4.mp3" },
+      { "tone": 5, "hanzi": "有", "mandarin": "有", "jyutping": "jau5", "audio": "/audio/tones/jau5.mp3" },
+      { "tone": 6, "hanzi": "又", "mandarin": "又", "jyutping": "jau6", "audio": "/audio/tones/jau6.mp3" }
+    ]
+  },
+  {
+    "syllable": "ji",
+    "items": [
+      { "tone": 1, "hanzi": "醫", "mandarin": "医生", "jyutping": "ji1", "audio": "/audio/tones/ji1.mp3" },
+      { "tone": 2, "hanzi": "椅", "mandarin": "椅子", "jyutping": "ji2", "audio": "/audio/tones/ji2.mp3" },
+      { "tone": 3, "hanzi": "意", "mandarin": "意思", "jyutping": "ji3", "audio": "/audio/tones/ji3.mp3" },
+      { "tone": 4, "hanzi": "而", "mandarin": "而且", "jyutping": "ji4", "audio": "/audio/tones/ji4.mp3" },
+      { "tone": 5, "hanzi": "耳", "mandarin": "耳朵", "jyutping": "ji5", "audio": "/audio/tones/ji5.mp3" },
+      { "tone": 6, "hanzi": "二", "mandarin": "二", "jyutping": "ji6", "audio": "/audio/tones/ji6.mp3" }
+    ]
+  },
+  {
+    "syllable": "se",
+    "items": [
+      { "tone": 1, "hanzi": "些", "mandarin": "一些", "jyutping": "se1", "audio": "/audio/tones/se1.mp3" },
+      { "tone": 2, "hanzi": "寫", "mandarin": "写", "jyutping": "se2", "audio": "/audio/tones/se2.mp3" },
+      { "tone": 3, "hanzi": "卸", "mandarin": "卸下", "jyutping": "se3", "audio": "/audio/tones/se3.mp3" },
+      { "tone": 4, "hanzi": "蛇", "mandarin": "蛇", "jyutping": "se4", "audio": "/audio/tones/se4.mp3" },
+      { "tone": 5, "hanzi": "社", "mandarin": "社会", "jyutping": "se5", "audio": "/audio/tones/se5.mp3" },
+      { "tone": 6, "hanzi": "射", "mandarin": "发射", "jyutping": "se6", "audio": "/audio/tones/se6.mp3" }
+    ]
+  }
+]

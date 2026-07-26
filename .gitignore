@@ -1,0 +1,32 @@
+# deps / build
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# capacitor / android build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/app/src/main/assets/public/
+android/app/src/main/res/xml/config.xml
+.gradle/
+
+# SECRETS — never commit
+*.keystore
+*.jks
+.admin-key.txt
+server/.admin-key.txt
+.env
+.env.*
+
+# NOTE: public/audio/ (677 mp3s, ~11MB) IS committed so the app runs
+# straight after clone. Regenerate anytime with `npm run gen-audio`.
+
+# editor / os
+.DS_Store
+*.log
+.vscode/
+.idea/

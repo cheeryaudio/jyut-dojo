@@ -1,0 +1,38 @@
+[
+  { "id": "colors", "title": "顏色", "emoji": "🎨", "words": [
+    { "id": "b_hung4sik1", "hanzi": "紅色", "jyutping": "hung4 sik1", "mandarin": "红色", "audio": "/audio/basics/b_hung4sik1.mp3", "tones": [4, 1] },
+    { "id": "b_laam4sik1", "hanzi": "藍色", "jyutping": "laam4 sik1", "mandarin": "蓝色", "audio": "/audio/basics/b_laam4sik1.mp3", "tones": [4, 1] },
+    { "id": "b_luk6sik1", "hanzi": "綠色", "jyutping": "luk6 sik1", "mandarin": "绿色", "audio": "/audio/basics/b_luk6sik1.mp3", "tones": [6, 1] },
+    { "id": "b_wong4sik1", "hanzi": "黃色", "jyutping": "wong4 sik1", "mandarin": "黄色", "audio": "/audio/basics/b_wong4sik1.mp3", "tones": [4, 1] },
+    { "id": "b_hak1sik1", "hanzi": "黑色", "jyutping": "hak1 sik1", "mandarin": "黑色", "audio": "/audio/basics/b_hak1sik1.mp3", "tones": [1, 1] },
+    { "id": "b_baak6sik1", "hanzi": "白色", "jyutping": "baak6 sik1", "mandarin": "白色", "audio": "/audio/basics/b_baak6sik1.mp3", "tones": [6, 1] },
+    { "id": "b_fui1sik1", "hanzi": "灰色", "jyutping": "fui1 sik1", "mandarin": "灰色", "audio": "/audio/basics/b_fui1sik1.mp3", "tones": [1, 1] },
+    { "id": "b_caang2sik1", "hanzi": "橙色", "jyutping": "caang2 sik1", "mandarin": "橙色", "audio": "/audio/basics/b_caang2sik1.mp3", "tones": [2, 1] }
+  ] },
+  { "id": "directions", "title": "方位", "emoji": "🧭", "words": [
+    { "id": "b_soeng6min6", "hanzi": "上面", "jyutping": "soeng6 min6", "mandarin": "上面", "audio": "/audio/basics/b_soeng6min6.mp3", "tones": [6, 6] },
+    { "id": "b_haa6min6", "hanzi": "下面", "jyutping": "haa6 min6", "mandarin": "下面", "audio": "/audio/basics/b_haa6min6.mp3", "tones": [6, 6] },
+    { "id": "b_zo2bin1", "hanzi": "左邊", "jyutping": "zo2 bin1", "mandarin": "左边", "audio": "/audio/basics/b_zo2bin1.mp3", "tones": [2, 1] },
+    { "id": "b_jau6bin1", "hanzi": "右邊", "jyutping": "jau6 bin1", "mandarin": "右边", "audio": "/audio/basics/b_jau6bin1.mp3", "tones": [6, 1] },
+    { "id": "b_cin4min6", "hanzi": "前面", "jyutping": "cin4 min6", "mandarin": "前面", "audio": "/audio/basics/b_cin4min6.mp3", "tones": [4, 6] },
+    { "id": "b_hau6min6", "hanzi": "後面", "jyutping": "hau6 min6", "mandarin": "后面", "audio": "/audio/basics/b_hau6min6.mp3", "tones": [6, 6] },
+    { "id": "b_jap6min6", "hanzi": "入面", "jyutping": "jap6 min6", "mandarin": "里面", "audio": "/audio/basics/b_jap6min6.mp3", "tones": [6, 6] },
+    { "id": "b_ceot1min6", "hanzi": "出面", "jyutping": "ceot1 min6", "mandarin": "外面", "audio": "/audio/basics/b_ceot1min6.mp3", "tones": [1, 6] },
+    { "id": "b_deoi3min6", "hanzi": "對面", "jyutping": "deoi3 min6", "mandarin": "对面", "audio": "/audio/basics/b_deoi3min6.mp3", "tones": [3, 6] },
+    { "id": "b_fu6gan6", "hanzi": "附近", "jyutping": "fu6 gan6", "mandarin": "附近", "audio": "/audio/basics/b_fu6gan6.mp3", "tones": [6, 6] }
+  ] },
+  { "id": "food", "title": "食物飲品", "emoji": "🍜", "words": [
+    { "id": "b_faan6", "hanzi": "飯", "jyutping": "faan6", "mandarin": "饭", "audio": "/audio/basics/b_faan6.mp3", "tones": [6] },
+    { "id": "b_min6", "hanzi": "麵", "jyutping": "min6", "mandarin": "面条", "audio": "/audio/basics/b_min6.mp3", "tones": [6] },
+    { "id": "b_zuk1", "hanzi": "粥", "jyutping": "zuk1", "mandarin": "粥", "audio": "/audio/basics/b_zuk1.mp3", "tones": [1] },
+    { "id": "b_baau1", "hanzi": "包", "jyutping": "baau1", "mandarin": "包子", "audio": "/audio/basics/b_baau1.mp3", "tones": [1] },
+    { "id": "b_gai1daan2", "hanzi": "雞蛋", "jyutping": "gai1 daan2", "mandarin": "鸡蛋", "audio": "/audio/basics/b_gai1daan2.mp3", "tones": [1, 2] },
+    { "id": "b_ngau4juk6", "hanzi": "牛肉", "jyutping": "ngau4 juk6", "mandarin": "牛肉", "audio": "/audio/basics/b_ngau4juk6.mp3", "tones": [4, 6] },
+    { "id": "b_zyu1juk6", "hanzi": "豬肉", "jyutping": "zyu1 juk6", "mandarin": "猪肉", "audio": "/audio/basics/b_zyu1juk6.mp3", "tones": [1, 6] },
+    { "id": "b_gai1", "hanzi": "雞", "jyutping": "gai1", "mandarin": "鸡", "audio": "/audio/basics/b_gai1.mp3", "tones": [1] },
+    { "id": "b_naai5caa4", "hanzi": "奶茶", "jyutping": "naai5 caa4", "mandarin": "奶茶", "audio": "/audio/basics/b_naai5caa4.mp3", "tones": [5, 4] },
+    { "id": "b_gaa3fe1", "hanzi": "咖啡", "jyutping": "gaa3 fe1", "mandarin": "咖啡", "audio": "/audio/basics/b_gaa3fe1.mp3", "tones": [3, 1] },
+    { "id": "b_seoi2", "hanzi": "水", "jyutping": "seoi2", "mandarin": "水", "audio": "/audio/basics/b_seoi2.mp3", "tones": [2] },
+    { "id": "b_be1zau2", "hanzi": "啤酒", "jyutping": "be1 zau2", "mandarin": "啤酒", "audio": "/audio/basics/b_be1zau2.mp3", "tones": [1, 2] }
+  ] }
+]
