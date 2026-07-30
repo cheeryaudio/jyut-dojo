@@ -1,97 +1,44 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, type StateStorage, type PersistStorage } from 'zustand/middleware';
-import localforage from 'localforage';
-import type { ReviewCard } from '../types';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import { createCard, schedule, type Grade } from '../lib/srs';
-import { scenarioVocab } from '../lib/data';
 import { dayKey } from '../lib/dates';
 import { addXp, XP } from '../lib/xp';
 import {
   addWrong,
   gradeWrong,
   clearWrong,
-  type WrongItem,
   type WrongType,
   type WrongPayload,
 } from '../lib/wrongbook';
 import type { PathProgress } from '../lib/path';
+import {
+  PERSIST_VERSION,
+  type AudioSpeed,
+  type CardFront,
+  type ProgressData,
+  type Voice,
+} from '../domain/progress/model';
+import { createDefaultProgressData, DEFAULT_SETTINGS } from '../domain/progress/defaults';
+import { coerceProgressData, migrateProgress } from '../domain/progress/migrations';
+import { selectPersistedProgress } from '../domain/progress/serialize';
+import { PERSIST_KEY, progressStorage } from '../infrastructure/storage/progressStorage';
 
-/** Single source of truth for the persisted-state schema version. */
-export const PERSIST_VERSION = 2;
+export { PERSIST_VERSION } from '../domain/progress/model';
+export type {
+  AudioSpeed,
+  CardFront,
+  ProgressData,
+  Settings,
+  ToneAnswer,
+  Voice,
+} from '../domain/progress/model';
+
 /** Cap on the raw tone-answer log so the synced blob can never grow unbounded. */
 const TONE_ANSWERS_CAP = 500;
 
-export type CardFront = 'audio' | 'hanzi' | 'jyutping';
-export type AudioSpeed = 'normal' | 'slow';
-export type Voice = 'female' | 'male';
-
-export interface ToneAnswer {
-  toneSet: string;
-  actual: number;
-  picked: number;
-  ts: number;
-}
-
-export interface Settings {
-  cardFront: CardFront;
-  /** daily goal in minutes; XP target = minutes × 10 */
-  dailyGoalMin: number;
-  /** false until the onboarding flow has been completed once */
-  onboarded: boolean;
-  /** stage the onboarding suggested the learner start near (soft hint) */
-  recommendedStage: string;
-  /** 雲端同步 code ('' = not set up) */
-  syncCode: string;
-  /** epoch ms of the last successful push (0 = never) */
-  lastSyncAt: number;
-  /** 匿名使用統計 — send anonymous usage events (default on) */
-  analyticsEnabled: boolean;
-  /** 語速 — normal (1×) or slow (0.72×) playback */
-  audioSpeed: AudioSpeed;
-  /** 聲音 — sentence voice: female or male */
-  voice: Voice;
-  /** 每日提醒 (native only) */
-  reminderEnabled: boolean;
-  reminderHour: number;
-  reminderMinute: number;
-}
-
-const DEFAULT_SETTINGS: Settings = {
-  cardFront: 'hanzi',
-  dailyGoalMin: 10,
-  onboarded: false,
-  recommendedStage: 'stage0',
-  syncCode: '',
-  lastSyncAt: 0,
-  analyticsEnabled: true,
-  audioSpeed: 'normal',
-  voice: 'female',
-  reminderEnabled: false,
-  reminderHour: 20,
-  reminderMinute: 0,
-};
-
-interface ProgressState {
-  learnedScenarios: string[];
-  practicedScenarios: string[];
-  pinyinDone: string[];
-  basicsLearned: string[];
-  tonesIntroVisited: boolean;
-  /** true once the 句型 (grammar) page has been opened — marks its path unit done */
-  grammarVisited: boolean;
-  /** true once the 60-second first-win mini-flow has been completed */
-  firstWinDone: boolean;
-  tonedrillBest: number;
-  quizStars: Record<string, number>;
-  reviewCards: Record<string, ReviewCard>;
-  toneAnswers: ToneAnswer[];
-  activityLog: Record<string, number>;
-  xpLog: Record<string, number>;
-  wrongItems: WrongItem[];
-  settings: Settings;
-
+export interface ProgressActions {
   // learning-event actions
-  completeLesson: (scenarioId: string) => void;
+  completeLesson: (scenarioId: string, wordIds: string[]) => void;
   completePractice: (scenarioId: string) => void;
   markPinyinDone: (ref: string) => void;
   markBasicsLearned: (deckId: string, wordIds: string[]) => void;
@@ -117,8 +64,6 @@ interface ProgressState {
   completeOnboarding: (dailyGoalMin: number, recommendedStage: string) => void;
   restartOnboarding: () => void;
   resetAll: () => void;
-
-  // v3 settings
   setSyncCode: (code: string) => void;
   setLastSyncAt: (ts: number) => void;
   setAnalyticsEnabled: (on: boolean) => void;
@@ -127,13 +72,14 @@ interface ProgressState {
   setReminder: (enabled: boolean, hour: number, minute: number) => void;
 }
 
-localforage.config({ name: 'jyut-dojo', storeName: 'progress' });
-
-const forageStorage: StateStorage = {
-  getItem: (name) => localforage.getItem<string>(name).then((v) => v ?? null),
-  setItem: (name, value) => localforage.setItem(name, value).then(() => undefined),
-  removeItem: (name) => localforage.removeItem(name),
-};
+export interface ProgressState extends ProgressData, ProgressActions {
+  /** true after persisted progress has hydrated successfully */
+  hasHydrated: boolean;
+  /** true when persisted progress could not be read or migrated safely */
+  hydrationError: boolean;
+  setHasHydrated: (hasHydrated: boolean) => void;
+  setHydrationError: (hydrationError: boolean) => void;
+}
 
 function bumpToday(log: Record<string, number>): Record<string, number> {
   const key = dayKey();
@@ -145,7 +91,7 @@ function withUnique(list: string[], value: string): string[] {
 }
 
 /** Snapshot the fields the path unlock logic needs. */
-export function pathProgress(s: ProgressState): PathProgress {
+export function pathProgress(s: ProgressData): PathProgress {
   return {
     learnedScenarios: s.learnedScenarios,
     pinyinDone: s.pinyinDone,
@@ -158,23 +104,13 @@ export function pathProgress(s: ProgressState): PathProgress {
 }
 
 export const useProgress = create<ProgressState>()(
-  persist(
+  persist<ProgressState, [], [], ProgressData>(
     (set, get) => ({
-      learnedScenarios: [],
-      practicedScenarios: [],
-      pinyinDone: [],
-      basicsLearned: [],
-      tonesIntroVisited: false,
-      grammarVisited: false,
-      firstWinDone: false,
-      tonedrillBest: 0,
-      quizStars: {},
-      reviewCards: {},
-      toneAnswers: [],
-      activityLog: {},
-      xpLog: {},
-      wrongItems: [],
-      settings: DEFAULT_SETTINGS,
+      ...createDefaultProgressData(),
+      hasHydrated: false,
+      hydrationError: false,
+      setHasHydrated: (hasHydrated) => set({ hasHydrated }),
+      setHydrationError: (hydrationError) => set({ hydrationError }),
 
       addWords: (wordIds) =>
         set((state) => {
@@ -183,10 +119,10 @@ export const useProgress = create<ProgressState>()(
           return { reviewCards: cards };
         }),
 
-      completeLesson: (scenarioId) =>
+      completeLesson: (scenarioId, wordIds) =>
         set((state) => {
           const cards = { ...state.reviewCards };
-          for (const id of scenarioVocab(scenarioId)) if (!cards[id]) cards[id] = createCard(id);
+          for (const id of wordIds) if (!cards[id]) cards[id] = createCard(id);
           return {
             learnedScenarios: withUnique(state.learnedScenarios, scenarioId),
             reviewCards: cards,
@@ -263,7 +199,6 @@ export const useProgress = create<ProgressState>()(
         set((state) => {
           const next = [...state.toneAnswers, { toneSet, actual, picked, ts: Date.now() }];
           return {
-            // keep only the most recent N so the persisted/synced blob stays bounded
             toneAnswers: next.length > TONE_ANSWERS_CAP ? next.slice(-TONE_ANSWERS_CAP) : next,
             activityLog: bumpToday(state.activityLog),
             xpLog: picked === actual ? addXp(state.xpLog, XP.toneDrillCorrect) : state.xpLog,
@@ -313,53 +248,42 @@ export const useProgress = create<ProgressState>()(
 
       setReminder: (enabled, hour, minute) =>
         set((state) => ({
-          settings: { ...state.settings, reminderEnabled: enabled, reminderHour: hour, reminderMinute: minute },
+          settings: {
+            ...state.settings,
+            reminderEnabled: enabled,
+            reminderHour: hour,
+            reminderMinute: minute,
+          },
         })),
 
-      resetAll: () =>
+      resetAll: () => {
+        const defaults = createDefaultProgressData();
         set({
-          learnedScenarios: [],
-          practicedScenarios: [],
-          pinyinDone: [],
-          basicsLearned: [],
-          tonesIntroVisited: false,
-          grammarVisited: false,
-          firstWinDone: false,
-          tonedrillBest: 0,
-          quizStars: {},
-          reviewCards: {},
-          toneAnswers: [],
-          activityLog: {},
-          xpLog: {},
-          wrongItems: [],
-          settings: { ...DEFAULT_SETTINGS, cardFront: get().settings.cardFront, onboarded: true },
-        }),
+          ...defaults,
+          settings: {
+            ...DEFAULT_SETTINGS,
+            cardFront: get().settings.cardFront,
+            onboarded: true,
+          },
+        });
+      },
     }),
     {
-      name: 'jyut-dojo',
-      storage: createJSONStorage(() => forageStorage) as PersistStorage<ProgressState>,
+      name: PERSIST_KEY,
+      storage: createJSONStorage<ProgressData>(() => progressStorage),
       version: PERSIST_VERSION,
-      // Preserve a v1 blob across the bump; `merge` back-fills the new fields.
-      // Existing users are treated as already-onboarded so they don't get the
-      // first-launch flow (fresh installs start with onboarded:false).
-      migrate: (persisted) => {
-        const p = (persisted ?? {}) as Partial<ProgressState>;
-        return {
-          ...p,
-          settings: { ...DEFAULT_SETTINGS, onboarded: true, ...(p.settings ?? {}) },
-        } as ProgressState;
+      partialize: selectPersistedProgress,
+      migrate: migrateProgress,
+      merge: (persisted, current) => ({
+        ...current,
+        ...coerceProgressData(persisted),
+        hasHydrated: false,
+        hydrationError: false,
+      }),
+      onRehydrateStorage: (state) => (_rehydratedState, error) => {
+        if (error) state.setHydrationError(true);
+        else state.setHasHydrated(true);
       },
-      // Deep-merge so a v1 persisted blob (missing the new fields) gains the
-      // defaults instead of crashing — new top-level keys and nested settings
-      // are back-filled from the initializer.
-      merge: (persisted, current) => {
-        const p = (persisted ?? {}) as Partial<ProgressState>;
-        return {
-          ...current,
-          ...p,
-          settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
-        };
-      },
-    }
+    },
   )
 );

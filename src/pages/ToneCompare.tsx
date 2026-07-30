@@ -4,6 +4,7 @@ import { words, sentences } from '../lib/data';
 import { JyutpingText } from '../components/JyutpingText';
 import { PlayButton } from '../components/PlayButton';
 import { MicIcon } from '../components/icons';
+import { useHoldToRecord } from '../hooks/useHoldToRecord';
 import { decodeAudioPath, decodeBlob, playBuffer, toast } from '../lib/audio';
 import { canRecord, extractPitchTrack, type PitchPoint } from '../lib/pitch';
 import { dtwScore } from '../lib/pitchScore';
@@ -104,17 +105,33 @@ export function ToneCompare() {
   const [selected, setSelected] = useState<RefItem | null>(null);
   const [refTrack, setRefTrack] = useState<PitchPoint[]>([]);
   const [userTrack, setUserTrack] = useState<PitchPoint[]>([]);
-  const [recording, setRecording] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [history, setHistory] = useState<number[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const refBuffer = useRef<AudioBuffer | null>(null);
   const userBuffer = useRef<AudioBuffer | null>(null);
-  const recorder = useRef<MediaRecorder | null>(null);
-  const stream = useRef<MediaStream | null>(null);
-  const chunks = useRef<Blob[]>([]);
 
   const recordable = useMemo(() => canRecord(), []);
+  const { recording, startRecording, stopRecording, cancelRecording } = useHoldToRecord({
+    enabled: recordable,
+    onComplete: async (blob) => {
+      try {
+        const buf = await decodeBlob(blob);
+        userBuffer.current = buf;
+        const uTrack = extractPitchTrack(buf);
+        setUserTrack(uTrack);
+        if (refBuffer.current) {
+          const rTrack = extractPitchTrack(refBuffer.current);
+          const sc = dtwScore(rTrack.map((p) => p.semitone), uTrack.map((p) => p.semitone));
+          setScore(sc);
+          setHistory((h) => [sc, ...h].slice(0, 5));
+        }
+      } catch {
+        toast(UI.toast_recordFailed);
+      }
+    },
+    onStartError: () => toast(UI.toast_micUnavailable),
+  });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -145,59 +162,6 @@ export function ToneCompare() {
     }
   };
 
-  /** Release the mic so it never stays hot after an error or a normal stop. */
-  const stopStream = () => {
-    stream.current?.getTracks().forEach((t) => t.stop());
-    stream.current = null;
-  };
-
-  const startRec = async () => {
-    if (!recordable) return;
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.current = s;
-      chunks.current = [];
-      const rec = new MediaRecorder(s);
-      rec.ondataavailable = (e) => e.data.size > 0 && chunks.current.push(e.data);
-      rec.onerror = () => {
-        stopStream();
-        setRecording(false);
-      };
-      rec.onstop = async () => {
-        stopStream();
-        const blob = new Blob(chunks.current, { type: rec.mimeType || 'audio/webm' });
-        try {
-          const buf = await decodeBlob(blob);
-          userBuffer.current = buf;
-          const uTrack = extractPitchTrack(buf);
-          setUserTrack(uTrack);
-          if (refBuffer.current) {
-            const rTrack = extractPitchTrack(refBuffer.current);
-            const sc = dtwScore(rTrack.map((p) => p.semitone), uTrack.map((p) => p.semitone));
-            setScore(sc);
-            setHistory((h) => [sc, ...h].slice(0, 5));
-          }
-        } catch {
-          toast(UI.toast_recordFailed);
-        }
-      };
-      recorder.current = rec;
-      rec.start();
-      setRecording(true);
-    } catch {
-      // getUserMedia or MediaRecorder construction failed — release the mic.
-      stopStream();
-      toast(UI.toast_micUnavailable);
-      setRecording(false);
-    }
-  };
-
-  const stopRec = () => {
-    if (recorder.current && recorder.current.state !== 'inactive') recorder.current.stop();
-    else stopStream();
-    setRecording(false);
-  };
-
   return (
     <div className="space-y-5">
       <header className="pt-1">
@@ -208,7 +172,10 @@ export function ToneCompare() {
 
       {!selected && (
         <div className="space-y-3">
+          <label htmlFor="tone-compare-search" className="sr-only">{UI.tc_search}</label>
           <input
+            id="tone-compare-search"
+            type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={UI.tc_search}
@@ -284,9 +251,10 @@ export function ToneCompare() {
           {recordable ? (
             <button
               type="button"
-              onPointerDown={() => void startRec()}
-              onPointerUp={stopRec}
-              onPointerLeave={() => recording && stopRec()}
+              onPointerDown={() => void startRecording()}
+              onPointerUp={stopRecording}
+              onPointerLeave={() => recording && stopRecording()}
+              onPointerCancel={cancelRecording}
               className={`btn w-full py-4 ${recording ? 'bg-tone1 text-white' : 'btn-primary'}`}
             >
               <MicIcon /> {recording ? UI.tc_recording : UI.tc_holdToRecord}

@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MicIcon } from './icons';
+import { useHoldToRecord } from '../hooks/useHoldToRecord';
 import { decodeAudioPath, decodeBlob, toast } from '../lib/audio';
 import { canRecord, extractPitchTrack } from '../lib/pitch';
 import { dtwScore } from '../lib/pitchScore';
@@ -49,73 +50,38 @@ function ScoreRing({ value }: { value: number }) {
  */
 export function PitchShadow({ audio, label }: Props) {
   const recordable = useMemo(() => canRecord(), []);
-  const [recording, setRecording] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const recorder = useRef<MediaRecorder | null>(null);
-  const stream = useRef<MediaStream | null>(null);
-  const chunks = useRef<Blob[]>([]);
+  const { recording, startRecording, stopRecording, cancelRecording } = useHoldToRecord({
+    enabled: recordable,
+    onComplete: async (blob) => {
+      setBusy(true);
+      try {
+        const [refBuf, userBuf] = await Promise.all([decodeAudioPath(audio), decodeBlob(blob)]);
+        const sc = dtwScore(
+          extractPitchTrack(refBuf).map((p) => p.semitone),
+          extractPitchTrack(userBuf).map((p) => p.semitone)
+        );
+        setScore(sc);
+      } catch {
+        toast(UI.toast_recordFailed);
+      } finally {
+        setBusy(false);
+      }
+    },
+    onStartError: () => toast(UI.toast_micUnavailable),
+  });
 
   if (!recordable) return null;
-
-  /** Always release the mic so it never stays hot. */
-  const stopStream = () => {
-    stream.current?.getTracks().forEach((t) => t.stop());
-    stream.current = null;
-  };
-
-  const startRec = async () => {
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.current = s;
-      chunks.current = [];
-      const rec = new MediaRecorder(s);
-      rec.ondataavailable = (e) => e.data.size > 0 && chunks.current.push(e.data);
-      rec.onerror = () => {
-        stopStream();
-        setRecording(false);
-      };
-      rec.onstop = async () => {
-        stopStream();
-        setBusy(true);
-        try {
-          const blob = new Blob(chunks.current, { type: rec.mimeType || 'audio/webm' });
-          const [refBuf, userBuf] = await Promise.all([decodeAudioPath(audio), decodeBlob(blob)]);
-          const sc = dtwScore(
-            extractPitchTrack(refBuf).map((p) => p.semitone),
-            extractPitchTrack(userBuf).map((p) => p.semitone)
-          );
-          setScore(sc);
-        } catch {
-          toast(UI.toast_recordFailed);
-        } finally {
-          setBusy(false);
-        }
-      };
-      recorder.current = rec;
-      rec.start();
-      setRecording(true);
-    } catch {
-      // getUserMedia or MediaRecorder failed — release anything acquired.
-      stopStream();
-      setRecording(false);
-      toast(UI.toast_micUnavailable);
-    }
-  };
-
-  const stopRec = () => {
-    if (recorder.current && recorder.current.state !== 'inactive') recorder.current.stop();
-    else stopStream();
-    setRecording(false);
-  };
 
   return (
     <div className="space-y-2">
       <button
         type="button"
-        onPointerDown={() => void startRec()}
-        onPointerUp={stopRec}
-        onPointerLeave={() => recording && stopRec()}
+        onPointerDown={() => void startRecording()}
+        onPointerUp={stopRecording}
+        onPointerLeave={() => recording && stopRecording()}
+        onPointerCancel={cancelRecording}
         disabled={busy}
         className={`btn w-full ${recording ? 'bg-tone1 text-white' : 'btn-outline'} disabled:opacity-50`}
       >

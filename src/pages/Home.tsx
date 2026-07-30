@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useProgress, pathProgress } from '../stores/progress';
+import { usePathProgress } from '../hooks/usePathProgress';
+import { useProgress } from '../stores/progress';
 import { computeStreak } from '../lib/dates';
 import { isDue } from '../lib/srs';
 import { dayXp, goalXp, weekStrip, type DayState } from '../lib/xp';
@@ -10,12 +11,13 @@ import { UI } from '../lib/ui';
 const WEEKDAY_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
 
 export function Home() {
-  const state = useProgress((s) => s);
-  const activityLog = state.activityLog;
-  const reviewCards = state.reviewCards;
-  const xpLog = state.xpLog;
-  const goalMin = state.settings.dailyGoalMin;
-  const recommendedStage = state.settings.recommendedStage;
+  const activityLog = useProgress((state) => state.activityLog);
+  const reviewCards = useProgress((state) => state.reviewCards);
+  const xpLog = useProgress((state) => state.xpLog);
+  const goalMin = useProgress((state) => state.settings.dailyGoalMin);
+  const firstWinDone = useProgress((state) => state.firstWinDone);
+  const pathProgress = usePathProgress();
+  const recommendedStage = pathProgress.recommendedStage;
 
   const streak = computeStreak(activityLog);
   const dueCount = Object.values(reviewCards).filter((c) => isDue(c)).length;
@@ -25,12 +27,12 @@ export function Home() {
 
   // brand-new learner who hasn't started anything → offer the 60-second first win
   const showFirstWin =
-    !state.firstWinDone && state.learnedScenarios.length === 0 && !state.tonesIntroVisited;
+    !firstWinDone && pathProgress.learnedScenarios.length === 0 && !pathProgress.tonesIntroVisited;
 
   // "繼續學習" → first unlocked-but-unfinished unit; prefer the recommended stage
   // so a 識少少 learner is sent straight to survival scenarios, not back to tones.
   const next = useMemo(() => {
-    const stages = computePath(pathProgress(state));
+    const stages = computePath(pathProgress);
     const rec = stages.find((st) => st.stage.id === recommendedStage);
     if (rec) {
       const inRec = rec.units.find((u) => u.status === 'current');
@@ -38,7 +40,7 @@ export function Home() {
     }
     for (const st of stages) for (const u of st.units) if (u.status === 'current') return u.unit;
     return null;
-  }, [state, recommendedStage]);
+  }, [pathProgress, recommendedStage]);
 
   return (
     <div className="space-y-6">

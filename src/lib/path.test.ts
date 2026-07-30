@@ -110,8 +110,8 @@ describe('helpers', () => {
   });
 });
 
-describe('grammar unit injection', () => {
-  it('appends the grammar unit as the last unit of stage1', () => {
+describe('grammar unit source data', () => {
+  it('stores the grammar unit as the last unit of stage1', () => {
     const stage1 = pathData.stages.find((s) => s.id === GRAMMAR_STAGE_ID);
     expect(stage1).toBeDefined();
     const last = stage1!.units[stage1!.units.length - 1];

@@ -50,7 +50,7 @@ describe('addWrong', () => {
 
 describe('gradeWrong', () => {
   const seed: WrongItem[] = [
-    { id: 't:si:4', type: 'tonedrill', refId: 'si', ts: 1, correctStreak: 0, payload: { kind: 'tonedrill', toneSet: 'si', actual: 4 } },
+    { id: 't:si:4', type: 'tonedrill', refId: 'si', ts: 1, correctStreak: 0, updatedAt: 1, payload: { kind: 'tonedrill', toneSet: 'si', actual: 4 } },
   ];
   it('removes after two correct in a row', () => {
     let items = gradeWrong(seed, 't:si:4', true);

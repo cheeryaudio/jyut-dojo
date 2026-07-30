@@ -25,6 +25,8 @@ export interface WrongItem {
   ts: number;
   /** correct answers in a row toward removal (need CLEAR_STREAK) */
   correctStreak: number;
+  /** epoch ms of the latest add/grade change */
+  updatedAt: number;
   payload: WrongPayload;
 }
 
@@ -59,18 +61,38 @@ export function addWrong(
   const ts = entry.ts ?? Date.now();
   const existing = items.find((i) => i.id === id);
   if (existing) {
-    return items.map((i) => (i.id === id ? { ...i, ts, correctStreak: 0 } : i));
+    return items.map((i) => (i.id === id ? { ...i, ts, correctStreak: 0, updatedAt: ts } : i));
   }
-  return [...items, { id, type: entry.type, refId: entry.refId, ts, correctStreak: 0, payload: entry.payload }];
+  return [
+    ...items,
+    {
+      id,
+      type: entry.type,
+      refId: entry.refId,
+      ts,
+      correctStreak: 0,
+      updatedAt: ts,
+      payload: entry.payload,
+    },
+  ];
 }
 
 /** Grade a redo answer. Correct → +1 streak (retire at CLEAR_STREAK); wrong → reset. */
-export function gradeWrong(items: WrongItem[], id: string, correct: boolean): WrongItem[] {
+export function gradeWrong(
+  items: WrongItem[],
+  id: string,
+  correct: boolean,
+  now: number = Date.now(),
+): WrongItem[] {
   if (!correct) {
-    return items.map((i) => (i.id === id ? { ...i, correctStreak: 0 } : i));
+    return items.map((i) => (i.id === id ? { ...i, correctStreak: 0, updatedAt: now } : i));
   }
   return items
-    .map((i) => (i.id === id ? { ...i, correctStreak: i.correctStreak + 1 } : i))
+    .map((i) => (
+      i.id === id
+        ? { ...i, correctStreak: i.correctStreak + 1, updatedAt: now }
+        : i
+    ))
     .filter((i) => i.correctStreak < CLEAR_STREAK);
 }
 

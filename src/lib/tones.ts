@@ -1,11 +1,11 @@
 // Fixed 6-tone colour coding — used everywhere a tone appears in the UI.
 export const TONE_COLORS: Record<number, string> = {
-  1: '#E5484D',
-  2: '#E8930C',
-  3: '#12A594',
-  4: '#3E63DD',
-  5: '#8E4EC6',
-  6: '#60646C',
+  1: '#C8303E',
+  2: '#8A5200',
+  3: '#00756B',
+  4: '#294BCB',
+  5: '#6F2DA8',
+  6: '#4E5155',
 };
 
 // Short human labels (pitch value + shape) for each Cantonese tone.

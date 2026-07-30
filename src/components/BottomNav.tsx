@@ -29,7 +29,7 @@ export function BottomNav() {
               }`
             }
           >
-            <span className="text-lg leading-none">{t.glyph}</span>
+            <span className="text-lg leading-none text-ink" aria-hidden="true">{t.glyph}</span>
             <span className="font-medium">{t.label}</span>
             {t.to === '/review' && dueCount > 0 && (
               <span className="absolute top-1 right-[22%] min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] leading-4 text-center">

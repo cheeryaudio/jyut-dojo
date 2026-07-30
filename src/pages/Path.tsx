@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProgress, pathProgress } from '../stores/progress';
+import { usePathProgress } from '../hooks/usePathProgress';
+import { useProgress } from '../stores/progress';
 import { computePath, unitKey, unitRoute, type UnitState } from '../lib/path';
 import { Stars } from '../components/Stars';
 import { BottomSheet } from '../components/BottomSheet';
@@ -17,10 +18,10 @@ const CAPABILITY: Record<string, string> = {
 
 export function Path() {
   const navigate = useNavigate();
-  const state = useProgress((s) => s);
-  const quizStars = useProgress((s) => s.quizStars);
-  const recommended = useProgress((s) => s.settings.recommendedStage);
-  const stages = useMemo(() => computePath(pathProgress(state)), [state]);
+  const progress = usePathProgress();
+  const quizStars = useProgress((state) => state.quizStars);
+  const recommended = progress.recommendedStage;
+  const stages = useMemo(() => computePath(progress), [progress]);
 
   const [locked, setLocked] = useState<UnitState | null>(null);
 
@@ -50,7 +51,7 @@ export function Path() {
         return (
           <section key={st.stage.id} className="space-y-1">
             <div className="flex items-baseline gap-2 px-1">
-              <span className="text-xs font-mono text-accent/70">{String(si + 1).padStart(2, '0')}</span>
+              <span className="text-xs font-mono text-accent">{String(si + 1).padStart(2, '0')}</span>
               <div className="flex-1">
                 <h2 className="hero-han text-lg text-ink">{st.stage.title}</h2>
                 <p className="text-xs text-tone6 mt-0.5">{st.stage.subtitle}</p>

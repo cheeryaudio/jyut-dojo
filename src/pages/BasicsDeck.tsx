@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
 import { Link, useParams, Navigate } from 'react-router-dom';
 import { getBasicsDeck } from '../lib/data';
-import { useProgress, pathProgress } from '../stores/progress';
+import { usePathProgress } from '../hooks/usePathProgress';
+import { useProgress } from '../stores/progress';
 import { isUnitUnlocked } from '../lib/path';
 import { playAudio, toast } from '../lib/audio';
 import { track } from '../lib/analytics';
@@ -13,9 +14,9 @@ import { UI } from '../lib/ui';
 export function BasicsDeck() {
   const { id = '' } = useParams();
   const deck = getBasicsDeck(id);
-  const state = useProgress((s) => s);
-  const learned = state.basicsLearned.includes(id);
-  const markBasicsLearned = state.markBasicsLearned;
+  const progress = usePathProgress();
+  const learned = progress.basicsLearned.includes(id);
+  const markBasicsLearned = useProgress((state) => state.markBasicsLearned);
   const [playing, setPlaying] = useState(false);
   const cancelRef = useRef(false);
 
@@ -29,7 +30,7 @@ export function BasicsDeck() {
   }
 
   // deep-link guard: a locked basics unit route bounces back to the path
-  if (!isUnitUnlocked(pathProgress(state), 'basics', id)) return <Navigate to="/path" replace />;
+  if (!isUnitUnlocked(progress, 'basics', id)) return <Navigate to="/path" replace />;
 
   const playAll = async () => {
     if (playing) {

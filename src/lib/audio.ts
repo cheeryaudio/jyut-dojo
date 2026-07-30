@@ -74,6 +74,16 @@ function resolveVoice(path: string): string {
   return path;
 }
 
+/**
+ * Paths worth warming for offline use: the voice the learner actually hears
+ * first, plus the female fallback the player drops to when a male file is
+ * missing. Keeps offline packs honest for both voice settings.
+ */
+export function offlineAudioPaths(path: string): string[] {
+  const resolved = resolveVoice(path);
+  return resolved === path ? [path] : [resolved, path];
+}
+
 async function playPath(path: string, rate: number): Promise<void> {
   const el = element(path);
   el.playbackRate = rate;

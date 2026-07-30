@@ -51,17 +51,20 @@
 | 音高分析 | Web Audio API + [pitchy](https://github.com/ianprime0509/pitchy)(YIN) + DTW 相似度 |
 | 打包 | vite-plugin-pwa（离线）+ Capacitor（安卓） |
 | 后端 | 可选的同步/统计服务：单文件 Node + `node:sqlite`，**零依赖** |
-| 测试 | vitest，80 个单元测试（SRS 调度、路径解锁、合并逻辑、听写判分、音高打分…） |
+| 测试 | vitest，100+ 个单元测试（SRS 调度、路径解锁、合并逻辑、听写判分、音高打分…） |
 
 ## 快速开始
 
+需要 Node.js 22.5+；项目固定使用 npm 11.16.0。
+
 ```bash
-npm install
+npm ci
 npm run validate    # 校验教材数据（见下）
 npm run gen-audio   # 生成 677 个 mp3（需 pip install edge-tts；仓库已含音频，可跳过）
 npm run dev         # 开发
 npm run build       # 产出 dist/（纯静态，可部署到任何地方）
 npm test            # 单元测试
+npm run check       # 校验 + 单元测试 + 构建
 ```
 
 `dist/` 可直接部署到 Vercel / Cloudflare Pages / 任意静态服务器，也可解压后双击
@@ -76,14 +79,43 @@ cd android && ANDROID_HOME=~/Android/Sdk ./gradlew assembleRelease
 # 然后 zipalign + apksigner 用你自己的 keystore 签名
 ```
 
+### 一键发布
+
+`scripts/release.sh` 把校验 → 测试 → 构建 → 部署 → 签名打包串成一条路径，
+版本号从 `package.json` 注入到「关于」页（不再手写），构建日期一并标记：
+
+```bash
+scripts/release.sh              # 校验 + 测试 + 构建（网页版即时生效）
+scripts/release.sh --check      # 只验证，不部署
+JYUT_KEYSTORE_PASS=… scripts/release.sh --apk   # 顺带出签名 APK 到 ../artifacts/
+```
+
+### 离线与更新策略
+
+- **音频不再全量预缓存**：700 多个 mp3 改为运行时 `CacheFirst` 缓存，首屏预缓存从
+  十几 MB 降到 ~500 KB。
+- **离线音频包**：「进度 → 离线音频」可按学习阶段整包下载，之后没网也能听。
+- **更新要经过用户同意**：新版本装好后只弹一条提示，点「立即更新」才重载，
+  不会在做题做到一半时把页面换掉。
+
 ### 可选：同步 + 统计服务
+
+API 默认地址由运行环境决定：生产 Web 使用同源 `/api`，开发 Web 使用
+`http://localhost:3251/api`，原生 App 使用 `https://jyut.benbox.dev/api`。如需覆盖，
+复制 `.env.example` 为 `.env.local`，设置构建期变量 `VITE_API_BASE_URL`。
 
 ```bash
 cd server
 ADMIN_KEY=<至少12位随机字符串> DB_PATH=./jyut.db node server.mjs
 ```
-前端通过 `src/lib/api.ts` 的 `apiBase()` 指向它。不部署也完全不影响 App 使用
-（同步和统计是可选功能，进度默认只存本地）。
+
+服务端环境变量：`ADMIN_KEY`（必填，少于 12 位直接拒绝启动）、`PORT`、`DB_PATH`、
+`ALLOWED_ORIGINS`（CORS 白名单，默认覆盖线上站点、原生外壳与本地开发）、
+`TRUST_PROXY=0`（不在反向代理后面时关掉，避免伪造 IP 绕过限流）。
+收到 SIGTERM 会先 checkpoint WAL 再退出。备份用 `server/backup.sh`：
+`VACUUM INTO` 出一致快照 + `integrity_check` 校验 + sha256，`--verify` 可单独复检最新备份。
+前端配置位于 `src/config/runtime.ts`。不部署也完全不影响 App 使用（同步和统计是可选功能，
+进度默认只存本地）。
 
 ## 教材数据与校验
 

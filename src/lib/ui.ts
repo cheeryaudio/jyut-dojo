@@ -17,6 +17,7 @@ export const UI = {
   // ---- brand ----
   appName: '粵語道場',
   appNameSub: '学广东话 · Jyut Dojo',
+  app_loading: '正在载入…',
 
   // ---- bottom nav ----
   nav_home: '首页',
@@ -124,6 +125,7 @@ export const UI = {
   quiz_correctSentence: '正确句子',
   quiz_dictationPrompt: '听写：照普通话意思，拼出粤拼',
   quiz_dictationTonesNote: '发音对了，声调再留意一下 ✓',
+  quiz_emptyScenario: '这个情景的句子太少，暂时出不了测验题。先去「学」和「练」熟悉一下吧。',
   quiz_doneTitle: '测验完成',
   quiz_score: (a: number, b: number) => `答对 ${a}/${b} 题`,
   quiz_backToScenario: '返回情景',
@@ -341,6 +343,25 @@ export const UI = {
   pg_reminderHint: '到时间会弹通知叫你打卡',
   pg_reminderTime: '提醒时间',
   // misc
+  // ---- 离线音频 ----
+  pg_offlineTitle: '离线音频',
+  pg_offlineHint: '把某个阶段的发音先下载好，之后没网也能听。已下载的音频只占手机缓存，可随时清理。',
+  pg_offlineCount: (n: number) => `${n} 个音频文件`,
+  pg_offlineProgress: (done: number, total: number) => `正在下载 ${done}/${total}`,
+  pg_offlineDownload: '下载',
+  pg_offlineDownloading: '下载中…',
+  pg_offlineReady: '已可离线 ✓',
+  pg_offlineDone: '下载完成，这个阶段可以离线用了',
+  pg_offlinePending: '已下载，重新打开 App 后才完全离线生效',
+  pg_offlineRestart: '重开后生效',
+  pg_offlineFailed: '下载失败，检查网络后再试',
+
+  // ---- 应用更新 ----
+  pwa_updateTitle: '有新版本',
+  pwa_updateHint: '更新后会重新载入，进度已保存。',
+  pwa_updateNow: '立即更新',
+  pwa_updateLater: '稍后',
+
   pg_other: '其他',
   pg_resetGoal: '重新设定目标',
   pg_resetGoalHint: '再走一次开场引导，改每日目标和起点',
