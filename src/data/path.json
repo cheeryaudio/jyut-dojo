@@ -21,7 +21,8 @@
         { "type": "basics", "ref": "people", "title": "人称", "emoji": "👪" },
         { "type": "basics", "ref": "colors", "title": "颜色", "emoji": "🎨" },
         { "type": "basics", "ref": "directions", "title": "方位", "emoji": "🧭" },
-        { "type": "basics", "ref": "food", "title": "食物饮品", "emoji": "🍜" }
+        { "type": "basics", "ref": "food", "title": "食物饮品", "emoji": "🍜" },
+        { "type": "grammar", "ref": "grammar", "title": "句型", "emoji": "📐" }
       ]
     },
     {

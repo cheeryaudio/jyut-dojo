@@ -1,35 +1,37 @@
 /**
- * 雲端同步 — opt-in progress sync via a short code.
+ * 雲端同步 — transport and orchestration for opt-in progress sync.
  *
- * The code is a bearer key: whoever holds it can read/replace the JSON progress
- * blob stored under it. We only ever sync learning progress (the persisted
- * Zustand state) — no accounts, no personal data.
- *
- *   PUT  /sync/:CODE  {state, base?}  → optimistic-concurrency save
- *   GET  /sync/:CODE                   → {state, updatedAt}
- *
- * Two-device safety: a push is GET → field-merge → PUT-with-base. If the server
- * moved on since our GET (409), we re-merge against the newer blob and retry, so
- * concurrent devices UNION their progress instead of clobbering. Restore replaces
- * the on-device blob (after shape validation) and reloads to re-hydrate cleanly.
+ * The pure three-way merge lives in domain/sync. Cloud documents stay flat and
+ * backwards-compatible with deployed clients while carrying ignorable version metadata.
  */
-import localforage from 'localforage';
 import { apiBase } from './api';
 import { track } from './analytics';
-import { useProgress, PERSIST_VERSION } from '../stores/progress';
+import { migrateProgress } from '../domain/progress/migrations';
+import { PERSIST_VERSION, type ProgressData } from '../domain/progress/model';
+import { selectPersistedProgress } from '../domain/progress/serialize';
+import { mergeProgress } from '../domain/sync/mergeProgress';
+import {
+  SYNC_CONTRACT_VERSION,
+  type RemoteProgress,
+  type SyncPutRequest,
+  type SyncPutResult,
+  type SyncTransportEnvelope,
+} from '../domain/sync/types';
+import {
+  loadSyncBaseline,
+  replacePersistedProgress,
+  saveSyncBaseline,
+} from '../infrastructure/storage/progressStorage';
+import { useProgress } from '../stores/progress';
 
-const PERSIST_KEY = 'jyut-dojo';
+export { mergeProgress } from '../domain/sync/mergeProgress';
+export type RemoteState = SyncTransportEnvelope;
 
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no easily-confused 0/O/1/I
 const CODE_LEN = 10;
 const CODE_RE = /^[A-Z0-9]{8,16}$/;
 const DEBOUNCE_MS = 15_000;
 const MAX_RETRY = 3;
-
-export interface RemoteState {
-  state: Record<string, unknown>;
-  updatedAt: string;
-}
 
 export function isValidCode(code: string): boolean {
   return CODE_RE.test(code.toUpperCase());
@@ -45,98 +47,90 @@ export function generateCode(): string {
     cryptoObj.getRandomValues(buf);
     for (let i = 0; i < CODE_LEN; i++) out += CODE_ALPHABET[buf[i] % n];
   } else {
-    for (let i = 0; i < CODE_LEN; i++) out += CODE_ALPHABET[Math.floor(Math.random() * n)];
+    for (let i = 0; i < CODE_LEN; i++) {
+      out += CODE_ALPHABET[Math.floor(Math.random() * n)];
+    }
   }
   return out;
 }
 
-/** JSON-safe snapshot of the current persisted store state (functions dropped). */
-function snapshot(): Record<string, unknown> {
-  return JSON.parse(JSON.stringify(useProgress.getState())) as Record<string, unknown>;
+/** Snapshot only fields that belong in local persistence and cloud sync. */
+function snapshot(): ProgressData {
+  return selectPersistedProgress(useProgress.getState());
 }
 
-// ---- field-level merge (pure; unit-tested) ----
-
-const asObj = (v: unknown): Record<string, unknown> =>
-  v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
-const asArr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
-const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
-
-function unionStrings(a: unknown, b: unknown): string[] {
-  return [...new Set([...asArr<string>(a), ...asArr<string>(b)].filter((x) => typeof x === 'string'))];
-}
-function maxByKey(a: unknown, b: unknown): Record<string, number> {
-  const oa = asObj(a), ob = asObj(b), out: Record<string, number> = {};
-  for (const k of new Set([...Object.keys(oa), ...Object.keys(ob)])) out[k] = Math.max(num(oa[k]), num(ob[k]));
-  return out;
+function asRecord(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
-/**
- * Merge two progress blobs so nothing a user did on either device is lost.
- * Additive collections union / max; settings prefer `local` (the device pushing
- * reflects the user's latest choices). Exported for tests.
- */
-export function mergeProgress(
-  remote: Record<string, unknown>,
-  local: Record<string, unknown>,
-): Record<string, unknown> {
-  // reviewCards: keep the more-progressed card (more reps; tie → later due)
-  const rc = asObj(remote.reviewCards), lc = asObj(local.reviewCards);
-  const cards: Record<string, unknown> = {};
-  for (const id of new Set([...Object.keys(rc), ...Object.keys(lc)])) {
-    const r = asObj(rc[id]), l = asObj(lc[id]);
-    if (!rc[id]) { cards[id] = lc[id]; continue; }
-    if (!lc[id]) { cards[id] = rc[id]; continue; }
-    if (num(l.reps) > num(r.reps)) cards[id] = l;
-    else if (num(r.reps) > num(l.reps)) cards[id] = r;
-    else cards[id] = String(l.due) >= String(r.due) ? l : r;
-  }
+function decodeRemoteProgress(raw: unknown): ProgressData {
+  const record = asRecord(raw);
+  const declaredVersion = record.progressVersion;
+  const version = typeof declaredVersion === 'number' && Number.isInteger(declaredVersion)
+    ? declaredVersion
+    : 1;
+  return migrateProgress(record, version);
+}
 
-  // wrongItems: union by id, keep the one closer to retirement (more correct)
-  const wi = new Map<string, Record<string, unknown>>();
-  for (const it of [...asArr<Record<string, unknown>>(remote.wrongItems), ...asArr<Record<string, unknown>>(local.wrongItems)]) {
-    const id = String(it?.id ?? '');
-    if (!id) continue;
-    const prev = wi.get(id);
-    if (!prev || num(it.correctCount) > num(prev.correctCount)) wi.set(id, it);
-  }
-
-  // toneAnswers: concat, newest 500 by ts
-  const tones = [...asArr<Record<string, unknown>>(remote.toneAnswers), ...asArr<Record<string, unknown>>(local.toneAnswers)]
-    .sort((a, b) => num(a.ts) - num(b.ts))
-    .slice(-500);
-
+function encodeRemoteProgress(state: ProgressData): RemoteProgress {
   return {
-    ...remote,
-    ...local, // local wins for any scalar/unknown field (incl. settings) by default
-    learnedScenarios: unionStrings(remote.learnedScenarios, local.learnedScenarios),
-    practicedScenarios: unionStrings(remote.practicedScenarios, local.practicedScenarios),
-    pinyinDone: unionStrings(remote.pinyinDone, local.pinyinDone),
-    basicsLearned: unionStrings(remote.basicsLearned, local.basicsLearned),
-    tonesIntroVisited: Boolean(remote.tonesIntroVisited) || Boolean(local.tonesIntroVisited),
-    tonedrillBest: Math.max(num(remote.tonedrillBest), num(local.tonedrillBest)),
-    quizStars: maxByKey(remote.quizStars, local.quizStars),
-    activityLog: maxByKey(remote.activityLog, local.activityLog),
-    xpLog: maxByKey(remote.xpLog, local.xpLog),
-    reviewCards: cards,
-    wrongItems: [...wi.values()],
-    toneAnswers: tones,
-    settings: { ...asObj(remote.settings), ...asObj(local.settings) },
+    ...selectPersistedProgress(state),
+    syncVersion: SYNC_CONTRACT_VERSION,
+    progressVersion: PERSIST_VERSION,
   };
 }
 
-interface PutResult { ok: boolean; conflict?: RemoteState }
+function parseEnvelope(raw: unknown): SyncTransportEnvelope {
+  const data = asRecord(raw);
+  if (data.state === null || typeof data.state !== 'object' || Array.isArray(data.state)) {
+    throw new Error('bad payload');
+  }
+  if (typeof data.updatedAt !== 'string' || !Number.isFinite(Date.parse(data.updatedAt))) {
+    throw new Error('bad payload');
+  }
+  return {
+    state: data.state,
+    v: typeof data.v === 'number' && Number.isInteger(data.v) && data.v >= 0 ? data.v : 0,
+    updatedAt: data.updatedAt,
+    ...(data.conflict === true ? { conflict: true } : {}),
+  };
+}
 
-async function putState(code: string, state: unknown, base?: string): Promise<PutResult> {
+async function putState(
+  code: string,
+  state: ProgressData,
+  base?: { version?: number; updatedAt?: string },
+): Promise<SyncPutResult> {
+  const body: SyncPutRequest = {
+    state: encodeRemoteProgress(state),
+    ...(base?.version !== undefined ? { baseVersion: base.version } : {}),
+    ...(base?.updatedAt !== undefined ? { base: base.updatedAt } : {}),
+  };
   const res = await fetch(`${apiBase()}/sync/${code}`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ state, base }),
+    body: JSON.stringify(body),
     keepalive: true,
   });
-  if (res.status === 409) return { ok: false, conflict: (await res.json()) as RemoteState };
+  const responseBody = await res.json() as unknown;
+  if (res.status === 409) return { ok: false, conflict: parseEnvelope(responseBody) };
   if (!res.ok) throw new Error(`sync PUT ${res.status}`);
-  return { ok: true };
+
+  const response = asRecord(responseBody);
+  if (response.ok !== true
+    || typeof response.v !== 'number'
+    || !Number.isInteger(response.v)
+    || response.v < 0
+    || typeof response.updatedAt !== 'string'
+    || !Number.isFinite(Date.parse(response.updatedAt))) {
+    throw new Error('bad sync PUT payload');
+  }
+  return {
+    ok: true,
+    envelope: { ok: true, v: response.v, updatedAt: response.updatedAt },
+  };
 }
 
 /** Fetch the remote blob for a code. Returns null on 404, throws on other errors. */
@@ -144,38 +138,79 @@ export async function fetchRemote(code: string): Promise<RemoteState | null> {
   const res = await fetch(`${apiBase()}/sync/${code}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`sync GET ${res.status}`);
-  const data = (await res.json()) as RemoteState;
-  if (!data || typeof data !== 'object' || typeof data.state !== 'object') throw new Error('bad payload');
-  return data;
+  return parseEnvelope(await res.json());
 }
 
-/** GET → merge → PUT with optimistic concurrency; retries on 409. */
+function rebaseLiveLocal(localAtStart: ProgressData, merged: ProgressData): void {
+  const currentLocal = snapshot();
+  const rebased = mergeProgress(localAtStart, merged, currentLocal);
+  useProgress.setState(rebased);
+}
+
+/** GET → baseline-aware merge → versioned PUT; retries directly from 409 envelopes. */
 async function pushMerged(code: string): Promise<void> {
+  const localAtStart = snapshot();
+  const storedBaseline = await loadSyncBaseline(code);
+  let remoteEnvelope = await fetchRemote(code);
+  let baselineState = storedBaseline?.state;
+
+  if (!remoteEnvelope) {
+    const result = await putState(code, localAtStart, { version: 0 });
+    if (!result.ok) remoteEnvelope = result.conflict;
+    else {
+      await saveSyncBaseline(code, {
+        state: localAtStart,
+        version: result.envelope.v,
+        updatedAt: result.envelope.updatedAt,
+      });
+      rebaseLiveLocal(localAtStart, localAtStart);
+      return;
+    }
+  }
+
+  if (!baselineState) {
+    // No ancestor exists on an upgraded/restored installation. Treat the fetched
+    // cloud document as already observed rather than re-adding local history.
+    baselineState = decodeRemoteProgress(remoteEnvelope.state);
+  }
+
   for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
-    const remote = await fetchRemote(code);
-    if (!remote) {
-      const r = await putState(code, snapshot()); // first push for this code
-      if (r.ok) return;
+    const remoteState = decodeRemoteProgress(remoteEnvelope.state);
+    const merged = mergeProgress(baselineState, remoteState, localAtStart);
+    const result = await putState(code, merged, {
+      version: remoteEnvelope.v,
+      updatedAt: remoteEnvelope.updatedAt,
+    });
+    if (!result.ok) {
+      remoteEnvelope = result.conflict;
       continue;
     }
-    const merged = mergeProgress(remote.state, snapshot());
-    const r = await putState(code, merged, remote.updatedAt);
-    if (r.ok) return;
-    // 409: someone else wrote between our GET and PUT — loop and re-merge.
+
+    await saveSyncBaseline(code, {
+      state: merged,
+      version: result.envelope.v,
+      updatedAt: result.envelope.updatedAt,
+    });
+    rebaseLiveLocal(localAtStart, merged);
+    return;
   }
   throw new Error('sync PUT gave up after retries');
 }
 
-/**
- * Generate a fresh code, persist it, and push current progress immediately.
- * Saves the code even if the push fails so the debounced retry can catch up.
- */
+/** Generate a fresh code, persist it, and push current progress immediately. */
 export async function createSyncCode(): Promise<{ code: string; pushed: boolean }> {
   const code = generateCode();
   useProgress.getState().setSyncCode(code);
   track('sync_created');
   try {
-    await putState(code, snapshot()); // brand-new code: no base needed
+    const local = snapshot();
+    const result = await putState(code, local, { version: 0 });
+    if (!result.ok) throw new Error('sync code collision');
+    await saveSyncBaseline(code, {
+      state: local,
+      version: result.envelope.v,
+      updatedAt: result.envelope.updatedAt,
+    });
     useProgress.getState().setLastSyncAt(Date.now());
     return { code, pushed: true };
   } catch {
@@ -195,60 +230,117 @@ export async function pushState(): Promise<void> {
   }
 }
 
-// ---- restore ----
+/** Coerce an untrusted remote blob into the current safe local shape. */
+export function sanitizeState(raw: unknown, code: string, now: number = Date.now()): ProgressData {
+  const safe = decodeRemoteProgress(raw);
+  return {
+    ...safe,
+    settings: {
+      ...safe.settings,
+      syncCode: code,
+      lastSyncAt: now,
+    },
+  };
+}
 
-const STRING_ARR_KEYS = ['learnedScenarios', 'practicedScenarios', 'pinyinDone', 'basicsLearned'];
-const REC_KEYS = ['quizStars', 'reviewCards', 'activityLog', 'xpLog'];
-
-/** Coerce an untrusted remote blob into a safe shape before we persist it. */
-export function sanitizeState(raw: unknown, code: string): Record<string, unknown> {
-  const s = asObj(raw);
-  const out: Record<string, unknown> = { ...s };
-  for (const k of STRING_ARR_KEYS) out[k] = asArr<string>(s[k]).filter((x) => typeof x === 'string');
-  for (const k of REC_KEYS) out[k] = asObj(s[k]);
-  out.toneAnswers = asArr(s.toneAnswers).slice(-500);
-  out.wrongItems = asArr(s.wrongItems);
-  out.tonesIntroVisited = Boolean(s.tonesIntroVisited);
-  out.tonedrillBest = num(s.tonedrillBest);
-  out.settings = { ...asObj(s.settings), syncCode: code, lastSyncAt: Date.now() };
-  return out;
+function isRemoteEnvelope(value: unknown): value is RemoteState {
+  const record = asRecord(value);
+  return 'state' in record && 'updatedAt' in record && 'v' in record;
 }
 
 /**
- * Replace on-device progress with a remote blob and reload so the store
- * re-hydrates. Tags the blob with the store's own PERSIST_VERSION (single source
- * of truth) so migrations stay correct. Caller must have confirmed with the user.
+ * Replace on-device progress and its baseline before reloading. Passing a raw
+ * state remains supported for older callers; current UI passes the full envelope.
  */
-export async function applyRestore(code: string, state: unknown): Promise<void> {
-  const safe = sanitizeState(state, code);
-  await localforage.setItem(PERSIST_KEY, JSON.stringify({ state: safe, version: PERSIST_VERSION }));
+export async function applyRestore(code: string, remote: RemoteState | unknown): Promise<void> {
+  const envelope = isRemoteEnvelope(remote)
+    ? parseEnvelope(remote)
+    : {
+        state: remote,
+        v: 0,
+        updatedAt: new Date().toISOString(),
+      } satisfies RemoteState;
+  const safe = sanitizeState(envelope.state, code);
+  await Promise.all([
+    replacePersistedProgress(safe, PERSIST_VERSION),
+    saveSyncBaseline(code, {
+      state: safe,
+      version: envelope.v,
+      updatedAt: envelope.updatedAt,
+    }),
+  ]);
   track('sync_restored');
   if (typeof location !== 'undefined') location.reload();
 }
 
-let debounce: ReturnType<typeof setTimeout> | null = null;
-let subscribed = false;
+interface SyncRuntime {
+  consumers: number;
+  debounce: ReturnType<typeof setTimeout> | null;
+  stop?: () => void;
+}
+
+type SyncGlobal = typeof globalThis & {
+  __jyutDojoSyncRuntimeV1__?: SyncRuntime;
+};
+
+function syncRuntime(): SyncRuntime {
+  const host = globalThis as SyncGlobal;
+  host.__jyutDojoSyncRuntimeV1__ ??= { consumers: 0, debounce: null };
+  return host.__jyutDojoSyncRuntimeV1__;
+}
 
 /** Flush any pending push right now (used on app background). */
 function flushNow(): void {
-  if (debounce) { clearTimeout(debounce); debounce = null; }
+  const runtime = syncRuntime();
+  if (runtime.debounce) {
+    clearTimeout(runtime.debounce);
+    runtime.debounce = null;
+  }
   void pushState();
 }
 
-/** Subscribe once: auto-push (debounced) after XP-earning changes + flush on hide. */
-export function initSync(): void {
-  if (subscribed) return;
-  subscribed = true;
-  useProgress.subscribe((state, prev) => {
-    if (state.xpLog === prev.xpLog) return; // only react to XP-earning actions
-    if (!state.settings.syncCode) return;
-    if (debounce) clearTimeout(debounce);
-    debounce = setTimeout(flushNow, DEBOUNCE_MS);
-  });
-  if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flushNow();
+/** Share one auto-push subscription across StrictMode/HMR callers. */
+export function initSync(): () => void {
+  const runtime = syncRuntime();
+  if (runtime.consumers === 0) {
+    const unsubscribe = useProgress.subscribe((state, prev) => {
+      if (state.xpLog === prev.xpLog) return; // only react to XP-earning actions
+      if (!state.settings.syncCode) return;
+      if (runtime.debounce) clearTimeout(runtime.debounce);
+      runtime.debounce = setTimeout(flushNow, DEBOUNCE_MS);
     });
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') flushNow();
+    };
+    const onPageHide = () => flushNow();
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibilityChange);
+    }
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', onPageHide);
+
+    runtime.stop = () => {
+      unsubscribe();
+      if (runtime.debounce) {
+        clearTimeout(runtime.debounce);
+        runtime.debounce = null;
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      }
+      if (typeof window !== 'undefined') window.removeEventListener('pagehide', onPageHide);
+    };
   }
-  if (typeof window !== 'undefined') window.addEventListener('pagehide', flushNow);
+
+  runtime.consumers += 1;
+  let cleaned = false;
+  return () => {
+    if (cleaned) return;
+    cleaned = true;
+    runtime.consumers = Math.max(0, runtime.consumers - 1);
+    if (runtime.consumers === 0) {
+      runtime.stop?.();
+      runtime.stop = undefined;
+    }
+  };
 }

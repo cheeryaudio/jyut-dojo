@@ -1,24 +1,15 @@
-import pathJson from '../data/path.json';
+import { pathData } from '../domain/curriculum/registry';
 import type { PathData, PathStage, PathUnit } from '../types';
 
-/** Stage the grammar (句型) unit is appended to, and the unit itself. */
+/** Stable identifiers retained for callers and tests; the unit itself lives in path.json. */
 export const GRAMMAR_STAGE_ID = 'stage1';
-export const GRAMMAR_UNIT: PathUnit = { type: 'grammar', ref: 'grammar', title: '句型', emoji: '📐' };
+const grammarUnit = pathData.stages
+  .find((stage) => stage.id === GRAMMAR_STAGE_ID)
+  ?.units.find((unit) => unit.type === 'grammar' && unit.ref === 'grammar');
+if (grammarUnit === undefined) throw new Error('path stage1: missing grammar:grammar unit');
+export const GRAMMAR_UNIT: PathUnit = grammarUnit;
 
-/**
- * path.json is frozen, so the grammar unit is injected at module load as the
- * last unit of stage1 (基礎詞彙). Everything downstream (computePath, Path.tsx,
- * Home's "next" CTA) sees it as a normal path unit.
- */
-function injectGrammar(data: PathData): PathData {
-  return {
-    stages: data.stages.map((st) =>
-      st.id === GRAMMAR_STAGE_ID ? { ...st, units: [...st.units, GRAMMAR_UNIT] } : st
-    ),
-  };
-}
-
-export const pathData = injectGrammar(pathJson as unknown as PathData);
+export { pathData };
 
 /** Fraction of the previous stage that must be completed to open the next. */
 export const STAGE_UNLOCK_RATIO = 0.6;

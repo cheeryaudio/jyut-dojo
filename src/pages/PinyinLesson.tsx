@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams, Navigate } from 'react-router-dom';
 import { pinyin } from '../lib/data';
-import { useProgress, pathProgress } from '../stores/progress';
+import { useProgress } from '../stores/progress';
+import { usePathProgress } from '../hooks/usePathProgress';
+import { shuffle } from '../domain/exercises/random';
 import { isUnitUnlocked } from '../lib/path';
 import { playAudio } from '../lib/audio';
 import { track } from '../lib/analytics';
@@ -18,15 +20,6 @@ interface Tagged {
   item: PinyinItem;
   /** group id for same-group distractors ('initials' for initials) */
   group: string;
-}
-
-function shuffle<T>(a: T[]): T[] {
-  const r = [...a];
-  for (let i = r.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [r[i], r[j]] = [r[j], r[i]];
-  }
-  return r;
 }
 
 function taggedItems(ref: string): Tagged[] {
@@ -59,10 +52,10 @@ export function PinyinLesson() {
   const isInitials = ref === 'initials';
   const pool = useMemo(() => taggedItems(ref), [ref]);
   const [mode, setMode] = useState<'learn' | 'quiz'>('learn');
-  const state = useProgress((s) => s);
+  const pathProgress = usePathProgress();
 
   // deep-link guard: a locked pinyin unit route bounces back to the path
-  if (!isUnitUnlocked(pathProgress(state), 'pinyin', ref)) return <Navigate to="/path" replace />;
+  if (!isUnitUnlocked(pathProgress, 'pinyin', ref)) return <Navigate to="/path" replace />;
 
   return (
     <div className="space-y-5">

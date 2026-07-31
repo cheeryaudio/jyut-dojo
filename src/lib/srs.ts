@@ -44,6 +44,7 @@ export function createCard(wordId: string, now: Date = new Date()): ReviewCard {
     ease: START_EASE,
     reps: 0,
     lapses: 0,
+    updatedAt: now.getTime(),
   };
 }
 
@@ -90,7 +91,7 @@ export function schedule(card: ReviewCard, grade: Grade, now: Date = new Date())
   }
 
   const due = new Date(now.getTime() + interval * DAY_MS).toISOString();
-  return { wordId: card.wordId, due, interval, ease, reps, lapses };
+  return { wordId: card.wordId, due, interval, ease, reps, lapses, updatedAt: now.getTime() };
 }
 
 /** Preview the resulting interval (in days) for each grade. */

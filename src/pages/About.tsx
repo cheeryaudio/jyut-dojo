@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
 
+import { contentVersion } from '../domain/curriculum/registry';
 import { UI } from '../lib/ui';
-const APP_VERSION = '1.0.0';
+
+// Injected from package.json at build time — never hand-edited, never stale.
+const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev';
+const BUILD_STAMP = typeof __BUILD_STAMP__ === 'string' ? __BUILD_STAMP__ : 'dev';
 
 export function About() {
   return (
@@ -14,6 +18,7 @@ export function About() {
       <div className="card p-5 text-center space-y-1">
         <div className="hero-han text-3xl font-bold text-ink">{UI.appName}</div>
         <div className="text-sm text-tone6">{UI.ab_version(APP_VERSION)}</div>
+        <div className="text-xs text-tone6">内容版本 {contentVersion} · 构建 {BUILD_STAMP}</div>
         <p className="text-xs text-tone6 pt-2">{UI.ab_tagline}</p>
       </div>
 

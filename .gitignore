@@ -21,6 +21,7 @@ android/app/src/main/res/xml/config.xml
 server/.admin-key.txt
 .env
 .env.*
+!.env.example
 
 # NOTE: public/audio/ (677 mp3s, ~11MB) IS committed so the app runs
 # straight after clone. Regenerate anytime with `npm run gen-audio`.
@@ -30,3 +31,4 @@ server/.admin-key.txt
 *.log
 .vscode/
 .idea/
+.gstack/
