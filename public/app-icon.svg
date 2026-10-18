@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="粵語道場">
+  <rect width="512" height="512" rx="112" fill="#2367ce"/>
+  <rect x="40" y="40" width="432" height="432" rx="84" fill="none" stroke="#f7fbff" stroke-width="16" opacity="0.55"/>
+  <path d="M120 288L184 224L240 320L304 160L400 280" fill="none" stroke="#f7fbff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

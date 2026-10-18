@@ -1,43 +1,82 @@
-// Fixed 6-tone colour coding — used everywhere a tone appears in the UI.
-export const TONE_COLORS: Record<number, string> = {
-  1: '#C8303E',
-  2: '#8A5200',
-  3: '#00756B',
-  4: '#294BCB',
-  5: '#6F2DA8',
-  6: '#4E5155',
-};
+import type { ToneItem } from "../types/domain";
+import type { ToneNumber } from "../types/tone";
 
-// Short human labels (pitch value + shape) for each Cantonese tone.
-export const TONE_LABELS: Record<number, string> = {
-  1: '高平 55',
-  2: '高升 25',
-  3: '中平 33',
-  4: '低降 21',
-  5: '低升 23',
-  6: '低平 22',
-};
-
-// Pitch-contour geometry as [startLevel, endLevel] on a 1..5 scale
-// (matching Chao tone-letter numbers). Rendered as an SVG polyline.
-export const TONE_CONTOURS: Record<number, [number, number]> = {
-  1: [5, 5], // high flat
-  2: [2, 5], // rising
-  3: [3, 3], // mid flat
-  4: [2, 1], // low falling
-  5: [2, 3], // low rising
-  6: [2, 2], // low flat
-};
-
-export const ALL_TONES: readonly number[] = [1, 2, 3, 4, 5, 6];
-
-/** Colour for a tone digit, falling back to ink when out of range. */
-export function toneColor(tone: number): string {
-  return TONE_COLORS[tone] ?? '#26211C';
+export interface ToneDefinition {
+  tone: ToneNumber;
+  name: string;
+  contour: string;
+  levels: readonly [number, number];
+  color: string;
 }
 
-/** Extract the trailing tone digit (1-6) from a jyutping syllable. */
-export function toneOf(syllable: string): number {
-  const m = syllable.match(/([1-6])$/);
-  return m ? Number(m[1]) : 0;
+export type TonePair = readonly [ToneNumber, ToneNumber];
+
+export interface DrillQuestion {
+  item: ToneItem;
+  pair: TonePair;
+  choices: ToneNumber[];
 }
+
+export interface DrillProgressState {
+  level: number;
+  streak: number;
+  reinforcement: TonePair[];
+}
+
+export const TONE_DEFINITIONS: ToneDefinition[] = [
+  { tone: 1, name: "高平", contour: "55", levels: [5, 5], color: "#d94a2c" },
+  { tone: 2, name: "高升", contour: "25", levels: [2, 5], color: "#d97706" },
+  { tone: 3, name: "中平", contour: "33", levels: [3, 3], color: "#2f855a" },
+  { tone: 4, name: "低降", contour: "21", levels: [2, 1], color: "#2878a5" },
+  { tone: 5, name: "低升", contour: "23", levels: [2, 3], color: "#7c5cc4" },
+  { tone: 6, name: "低平", contour: "22", levels: [2, 2], color: "#a13f6f" },
+];
+
+const PAIRS_BY_LEVEL: Record<number, TonePair[]> = {
+  1: [[1, 4]],
+  2: [[1, 4], [1, 6], [2, 4]],
+  3: [[2, 5], [3, 6], [4, 6]],
+};
+
+export const pairKey = (pair: TonePair): string => [...pair].sort().join("v");
+
+export const advanceDrillProgress = (
+  state: DrillProgressState,
+  pair: TonePair,
+  correct: boolean,
+): DrillProgressState => {
+  if (!correct) {
+    return { ...state, streak: 0, reinforcement: [...state.reinforcement, pair] };
+  }
+  const streak = state.streak + 1;
+  if (streak >= 5 && state.level < 3) {
+    return { ...state, level: state.level + 1, streak: 0 };
+  }
+  return { ...state, streak: Math.min(5, streak) };
+};
+
+const randomItem = <T,>(items: readonly T[], random: () => number): T => {
+  const item = items[Math.floor(random() * items.length)];
+  if (item === undefined) throw new Error("Cannot choose from an empty item list");
+  return item;
+};
+
+export const createDrillQuestion = (
+  level: number,
+  reinforcement: TonePair[],
+  toneItems: ToneItem[],
+  random: () => number = Math.random,
+): { question: DrillQuestion; remainingReinforcement: TonePair[] } => {
+  const reinforcedPair = reinforcement[0];
+  const pair = reinforcedPair ?? randomItem(PAIRS_BY_LEVEL[level] ?? PAIRS_BY_LEVEL[3] ?? [], random);
+  const sets = [...new Set(toneItems.map((item) => item.setId))];
+  const setId = randomItem(sets, random);
+  const correctTone = randomItem(pair, random);
+  const item = toneItems.find((candidate) => candidate.setId === setId && candidate.tone === correctTone);
+  if (item === undefined) throw new Error(`Missing tone ${correctTone} item in set ${setId}`);
+
+  return {
+    question: { item, pair, choices: [...pair].sort(() => random() - 0.5) },
+    remainingReinforcement: reinforcedPair === undefined ? reinforcement : reinforcement.slice(1),
+  };
+};

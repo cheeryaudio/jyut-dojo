@@ -29,7 +29,6 @@ case "${1:-}" in
 esac
 
 VERSION=$(node -p "require('./package.json').version")
-CONTENT_VERSION=$(node -p "require('./src/data/curriculum.json').contentVersion")
 STAMP=$(date +%Y%m%d-%H%M)
 say() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 
@@ -40,7 +39,7 @@ if [[ $APK_ONLY -eq 0 ]]; then
   say "tests"
   npm test
 
-  say "build (app $VERSION, content $CONTENT_VERSION)"
+  say "build (app $VERSION)"
   npm run build
 
   if [[ $DEPLOY -eq 1 ]]; then
@@ -81,4 +80,3 @@ fi
 
 say "done"
 echo "app version:     $VERSION"
-echo "content version: $CONTENT_VERSION"

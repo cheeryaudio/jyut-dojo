@@ -2,6 +2,7 @@
 node_modules/
 dist/
 dist-ssr/
+*.tsbuildinfo
 *.local
 
 # capacitor / android build output
@@ -17,14 +18,15 @@ android/app/src/main/res/xml/config.xml
 # SECRETS — never commit
 *.keystore
 *.jks
+android/keystore.properties
 .admin-key.txt
 server/.admin-key.txt
 .env
 .env.*
 !.env.example
 
-# NOTE: public/audio/ (677 mp3s, ~11MB) IS committed so the app runs
-# straight after clone. Regenerate anytime with `npm run gen-audio`.
+# Static audio is committed. Current lesson audio can be regenerated with
+# `npm run audio:generate`; older audio assets remain available in the repository.
 
 # editor / os
 .DS_Store

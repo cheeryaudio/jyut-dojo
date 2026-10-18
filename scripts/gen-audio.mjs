@@ -1,51 +1,87 @@
-// Batch-generate static mp3s with Microsoft Edge TTS (zh-HK voices).
-// Requires the `edge-tts` CLI (pip install edge-tts); override binary via EDGE_TTS env.
-// Idempotent: existing files are skipped.
-import { readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { access, mkdir, readFile, rename, rm, stat } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { MsEdgeTTS, OUTPUT_FORMAT } from "msedge-tts";
 
-const run = promisify(execFile);
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const BIN = process.env.EDGE_TTS || 'edge-tts';
-const VOICE = 'zh-HK-HiuMaanNeural';
-const load = (f) => JSON.parse(readFileSync(join(root, 'src/data', f), 'utf8'));
+const VOICE = "zh-HK-HiuMaanNeural";
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(SCRIPT_DIR, "..");
+const PUBLIC_ROOT = path.resolve(PROJECT_ROOT, "public");
 
-const jobs = [];
-for (const w of [...load('words.json'), ...load('words2.json'), ...load('words3.json')]) jobs.push({ text: w.hanzi, out: w.audio, rate: '-10%' });
-for (const s of [...load('sentences.json'), ...load('sentences2.json'), ...load('sentences3.json')]) jobs.push({ text: s.hanzi, out: s.audio, rate: '-15%' });
-for (const g of [...load('basics.json'), ...load('basics2.json')]) for (const w of g.words) jobs.push({ text: w.hanzi, out: w.audio, rate: '-10%' });
-const MVOICE = 'zh-HK-WanLungNeural';
-for (const s of [...load('sentences.json'), ...load('sentences2.json'), ...load('sentences3.json')])
-  jobs.push({ text: s.hanzi, out: s.audio.replace('/sentences/', '/sentences-m/'), rate: '-15%', voice: MVOICE });
-const pin = load('pinyin.json');
-for (const it of [...pin.initials, ...pin.finalGroups.flatMap((g) => g.items)]) jobs.push({ text: it.hanzi, out: it.audio, rate: '-20%' });
-for (const set of load('tonesets.json'))
-  for (const i of set.items) jobs.push({ text: i.hanzi, out: i.audio, rate: '-20%' });
+const readJson = async (relativePath) => JSON.parse(await readFile(path.resolve(PROJECT_ROOT, relativePath), "utf8"));
 
-let done = 0, skipped = 0, failed = 0;
-const queue = [...jobs];
-async function worker() {
-  while (queue.length) {
-    const j = queue.shift();
-    const path = join(root, 'public', j.out);
-    if (existsSync(path)) { skipped++; continue; }
-    mkdirSync(dirname(path), { recursive: true });
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        await run(BIN, ['--voice', j.voice || VOICE, `--rate=${j.rate}`, '--text', j.text, '--write-media', path]);
-        done++;
-        break;
-      } catch (e) {
-        if (attempt === 3) { failed++; console.error(`FAILED ${j.out}: ${e.message}`); }
-        else await new Promise((r) => setTimeout(r, 1500 * attempt));
-      }
-    }
-    if ((done + skipped) % 20 === 0) console.log(`progress: ${done + skipped + failed}/${jobs.length}`);
+const [words, sentences, tones] = await Promise.all([
+  readJson("src/data/words.json"),
+  readJson("src/data/sentences.json"),
+  readJson("src/data/tones.json"),
+]);
+
+const escapeXml = (value) => value
+  .replaceAll("&", "&amp;")
+  .replaceAll("<", "&lt;")
+  .replaceAll(">", "&gt;")
+  .replaceAll('"', "&quot;")
+  .replaceAll("'", "&apos;");
+
+const targetPathFor = (audioPath) => {
+  const relativePath = audioPath.replace(/^\/+/, "");
+  const targetPath = path.resolve(PUBLIC_ROOT, relativePath);
+  if (!targetPath.startsWith(`${PUBLIC_ROOT}${path.sep}`)) {
+    throw new Error(`Audio path escaped public directory: ${audioPath}`);
   }
+  return targetPath;
+};
+
+const isCompleteFile = async (filePath) => {
+  try {
+    const file = await stat(filePath);
+    return file.isFile() && file.size > 0;
+  } catch {
+    return false;
+  }
+};
+
+const jobs = [
+  ...words.map((word) => ({ id: `word:${word.id}`, text: word.hanzi, targetPath: targetPathFor(word.audio) })),
+  ...sentences.map((sentence) => ({ id: `sentence:${sentence.id}`, text: sentence.hanzi, targetPath: targetPathFor(sentence.audio) })),
+  ...tones.map((tone) => ({ id: `tone:${tone.id}`, text: tone.hanzi, targetPath: targetPathFor(tone.audio) })),
+];
+
+await mkdir(path.resolve(PUBLIC_ROOT, "audio", "words"), { recursive: true });
+await mkdir(path.resolve(PUBLIC_ROOT, "audio", "sentences"), { recursive: true });
+await mkdir(path.resolve(PUBLIC_ROOT, "audio", "tones"), { recursive: true });
+
+const tts = new MsEdgeTTS();
+await tts.setMetadata(VOICE, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+
+let generated = 0;
+let skipped = 0;
+
+try {
+  for (const [index, job] of jobs.entries()) {
+    if (await isCompleteFile(job.targetPath)) {
+      skipped += 1;
+      console.log(`[${index + 1}/${jobs.length}] skip ${job.id}`);
+      continue;
+    }
+
+    const tempDirectory = path.resolve(PUBLIC_ROOT, "audio", `.tmp-${process.pid}-${index}`);
+    await rm(tempDirectory, { recursive: true, force: true });
+    await mkdir(tempDirectory, { recursive: true });
+
+    try {
+      const { audioFilePath } = await tts.toFile(tempDirectory, escapeXml(job.text));
+      await mkdir(path.dirname(job.targetPath), { recursive: true });
+      await access(audioFilePath);
+      await rename(audioFilePath, job.targetPath);
+      generated += 1;
+      console.log(`[${index + 1}/${jobs.length}] wrote ${path.relative(PROJECT_ROOT, job.targetPath)}`);
+    } finally {
+      await rm(tempDirectory, { recursive: true, force: true });
+    }
+  }
+} finally {
+  tts.close();
 }
-await Promise.all(Array.from({ length: 4 }, worker));
-console.log(`Audio done: ${done} generated, ${skipped} skipped, ${failed} failed of ${jobs.length}.`);
-process.exit(failed ? 1 : 0);
+
+console.log(`Audio complete: ${generated} generated, ${skipped} skipped, ${jobs.length} total.`);

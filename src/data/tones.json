@@ -1,0 +1,14 @@
+[
+  { "id": "si1", "setId": "si", "hanzi": "詩", "jyutping": "si1", "mandarin": "诗", "audio": "/audio/tones/si1.mp3", "tone": 1 },
+  { "id": "si2", "setId": "si", "hanzi": "史", "jyutping": "si2", "mandarin": "历史", "audio": "/audio/tones/si2.mp3", "tone": 2 },
+  { "id": "si3", "setId": "si", "hanzi": "試", "jyutping": "si3", "mandarin": "试", "audio": "/audio/tones/si3.mp3", "tone": 3 },
+  { "id": "si4", "setId": "si", "hanzi": "時", "jyutping": "si4", "mandarin": "时间", "audio": "/audio/tones/si4.mp3", "tone": 4 },
+  { "id": "si5", "setId": "si", "hanzi": "市", "jyutping": "si5", "mandarin": "市场", "audio": "/audio/tones/si5.mp3", "tone": 5 },
+  { "id": "si6", "setId": "si", "hanzi": "事", "jyutping": "si6", "mandarin": "事情", "audio": "/audio/tones/si6.mp3", "tone": 6 },
+  { "id": "fu1", "setId": "fu", "hanzi": "夫", "jyutping": "fu1", "mandarin": "丈夫", "audio": "/audio/tones/fu1.mp3", "tone": 1 },
+  { "id": "fu2", "setId": "fu", "hanzi": "苦", "jyutping": "fu2", "mandarin": "苦", "audio": "/audio/tones/fu2.mp3", "tone": 2 },
+  { "id": "fu3", "setId": "fu", "hanzi": "褲", "jyutping": "fu3", "mandarin": "裤子", "audio": "/audio/tones/fu3.mp3", "tone": 3 },
+  { "id": "fu4", "setId": "fu", "hanzi": "符", "jyutping": "fu4", "mandarin": "符号", "audio": "/audio/tones/fu4.mp3", "tone": 4 },
+  { "id": "fu5", "setId": "fu", "hanzi": "婦", "jyutping": "fu5", "mandarin": "妇女", "audio": "/audio/tones/fu5.mp3", "tone": 5 },
+  { "id": "fu6", "setId": "fu", "hanzi": "父", "jyutping": "fu6", "mandarin": "父亲", "audio": "/audio/tones/fu6.mp3", "tone": 6 }
+]

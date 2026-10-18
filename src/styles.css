@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100dvh;
+}
+
+:focus-visible {
+  outline: 3px solid #2367ce;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tone-contour-path {
+    animation: draw-tone-contour 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .recording-pulse {
+    animation: recording-pulse 1.2s ease-in-out infinite;
+  }
+
+  .analysis-sweep {
+    animation: analysis-sweep 1s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes draw-tone-contour {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes recording-pulse {
+  50% { transform: scale(0.82); opacity: 0.55; }
+}
+
+@keyframes analysis-sweep {
+  from { transform: translateX(-30%); }
+  to { transform: translateX(130%); }
+}
+html.capacitor-native {
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.capacitor-native .app-top-bar {
+  height: calc(4rem + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}

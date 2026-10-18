@@ -1,0 +1,78 @@
+import type { CurriculumStage } from "../types/curriculum";
+
+export const curriculumStages: CurriculumStage[] = [
+  {
+    id: "foundation",
+    level: 0,
+    title: "開聲基礎",
+    mandarin: "发音与粤拼基础",
+    outcome: "睇得明粵拼，聽得出六聲，敢開口讀短詞。",
+    units: [
+      { id: "six-tones", title: "六聲起步", mandarin: "认识六个声调", description: "由音高線、辨調到第一次跟讀。", route: "/tones", status: "ready", minutes: 20 },
+      { id: "sound-system", title: "聲母韻母", mandarin: "声母、韵母和入声", description: "建立完整粵拼拼讀同入聲概念。", route: "/learn/sound-system", status: "ready", minutes: 35 },
+      { id: "core-particles", title: "口語骨架", mandarin: "代词、否定、疑问和语气词", description: "先掌握最常用嘅句尾助詞同問法。", route: "/learn/core-particles", status: "ready", minutes: 35 },
+    ],
+  },
+  {
+    id: "survival",
+    level: 1,
+    title: "生存溝通",
+    mandarin: "应付香港日常场景",
+    outcome: "可以完成問候、落單、出行、購物同電話基本任務。",
+    units: [
+      { id: "greetings", title: "打招呼", mandarin: "问候与自我介绍", description: "第一次見面，由介紹自己到約下次飲茶。", route: "/learn/greetings", status: "ready", minutes: 20 },
+      { id: "cha-chaan-teng", title: "茶餐廳落單", mandarin: "点餐与结账", description: "搵位、叫餐飲、改要求同埋單。", route: "/learn/cha-chaan-teng", status: "ready", minutes: 20 },
+      { id: "directions", title: "問路", mandarin: "问路与听懂方向", description: "問港鐵站點行，同埋確認轉彎位置。", route: "/learn/directions", status: "ready", minutes: 20 },
+      { id: "mtr", title: "搭港鐵", mandarin: "路线、月台与换乘", description: "問路線、月台、轉車同落車提示。", route: "/learn/mtr", status: "ready", minutes: 20 },
+      { id: "shopping", title: "買嘢講價", mandarin: "购物、尺码与议价", description: "問價錢、試衫、揀色同自然噉講價。", route: "/learn/shopping", status: "ready", minutes: 20 },
+      { id: "phone", title: "打電話", mandarin: "电话确认与约时间", description: "確認身份、約時間地點同交代遲到。", route: "/learn/phone", status: "ready", minutes: 20 },
+    ],
+  },
+  {
+    id: "daily-life",
+    level: 2,
+    title: "日常生活",
+    mandarin: "扩大生活覆盖面",
+    outcome: "可以處理住屋、工作、醫療、外賣同公共服務。",
+    units: [
+      { id: "time-weather", title: "時間同天氣", mandarin: "时间、日期与天气", description: "約時間、改期，同埋講天氣影響。", route: "/learn/time-weather", status: "ready", minutes: 30 },
+      { id: "home-delivery", title: "住屋同送貨", mandarin: "租住、维修与快递", description: "報地址、收件、維修同管理處溝通。", route: "/learn/home-delivery", status: "ready", minutes: 35 },
+      { id: "health", title: "睇醫生買藥", mandarin: "就医与买药", description: "講症狀、病史、劑量同注意事項。", route: "/learn/health", status: "ready", minutes: 40 },
+      { id: "work-basics", title: "返工協作", mandarin: "工作安排与协作", description: "交代進度、問要求、約會議同請假。", route: "/learn/work-basics", status: "ready", minutes: 45 },
+      { id: "family-friends", title: "家庭同朋友", mandarin: "家人与朋友", description: "介紹關係、講共同經歷同自然邀請。", route: "/learn/family-friends", status: "ready", minutes: 35 },
+      { id: "takeaway-services", title: "外賣同公共服務", mandarin: "外卖与公共服务", description: "落單、問時間、報失同填表辦事。", route: "/learn/takeaway-services", status: "ready", minutes: 40 },
+      { id: "money-services", title: "銀行同付款", mandarin: "银行与付款", description: "轉帳、提款、開戶同核對帳目。", route: "/learn/money-services", status: "ready", minutes: 40 },
+    ],
+  },
+  {
+    id: "conversation",
+    level: 3,
+    title: "持續對話",
+    mandarin: "从回答一句到持续交流",
+    outcome: "可以敘事、解釋、比較、邀請、婉拒同處理誤會。",
+    units: [
+      { id: "storytelling", title: "講返件事", mandarin: "叙述经历", description: "用時間順序、原因同結果講一段經歷。", route: "/learn/storytelling", status: "ready", minutes: 45 },
+      { id: "opinions", title: "講睇法", mandarin: "表达意见与比较", description: "表達偏好、同意程度同保留意見。", route: "/learn/opinions", status: "ready", minutes: 45 },
+      { id: "repair", title: "聽唔明點算", mandarin: "澄清、改述与修补", description: "請對方重複、講慢啲、換個講法。", route: "/learn/repair", status: "ready", minutes: 35 },
+      { id: "invitations", title: "邀請同婉拒", mandarin: "邀请与婉拒", description: "邀請、接受、拒絕同提出替代方案。", route: "/learn/invitations", status: "ready", minutes: 35 },
+      { id: "explanations", title: "解釋原因", mandarin: "解释原因与结果", description: "講原因、結果、問題出處同補救。", route: "/learn/explanations", status: "ready", minutes: 40 },
+      { id: "voice-messages", title: "電話同口訊", mandarin: "电话与语音留言", description: "留言、回覆、地址同重要資料。", route: "/learn/voice-messages", status: "ready", minutes: 35 },
+      { id: "group-conversation", title: "多人對話", mandarin: "多人对话轮次", description: "加入、補充、管理同交還話輪。", route: "/learn/group-conversation", status: "ready", minutes: 45 },
+    ],
+  },
+  {
+    id: "fluency",
+    level: 4,
+    title: "日常流利",
+    mandarin: "适应自然语速与综合任务",
+    outcome: "可以適應常見連讀，同香港人持續完成真實任務。",
+    units: [
+      { id: "fast-speech", title: "正常語速", mandarin: "连读、省音与语流", description: "由教材速度過渡到香港人自然語速。", route: "/learn/fast-speech", status: "ready", minutes: 50 },
+      { id: "integrated-tasks", title: "綜合任務", mandarin: "跨场景综合沟通", description: "一個任務同時用到聽力、回應、澄清同表達。", route: "/learn/integrated-tasks", status: "ready", minutes: 60 },
+      { id: "workplace-fluency", title: "工作協作進階", mandarin: "自然工作协作", description: "對齊目標、分工、進度同下一步。", route: "/learn/workplace-fluency", status: "ready", minutes: 55 },
+      { id: "social-smalltalk", title: "社交寒暄", mandarin: "自然社交寒暄", description: "由一句開場延伸成幾個話輪。", route: "/learn/social-smalltalk", status: "ready", minutes: 45 },
+      { id: "public-announcements", title: "廣播同公共資訊", mandarin: "广播与公共信息", description: "捉時間、地點、變更同替代指示。", route: "/learn/public-announcements", status: "ready", minutes: 50 },
+      { id: "fluency-check", title: "流利度檢測", mandarin: "三至五分钟持续交流", description: "按理解、聲調、流暢、語用同修補策略提供證據。", route: "/learn/fluency-check", status: "ready", minutes: 30 },
+    ],
+  },
+];
