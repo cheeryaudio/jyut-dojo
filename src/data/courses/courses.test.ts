@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import { courses, courseTopics, uniqueCoursePhrases, uniqueCourseWords } from "./index";
 
 describe("scene course publication checks", () => {
-  it("publishes sixty real courses in ten complete topics with unique identifiers", () => {
-    expect(courses).toHaveLength(60);
+  it("publishes ninety real courses in ten complete topics with unique identifiers", () => {
+    expect(courses).toHaveLength(90);
     expect(courseTopics).toHaveLength(10);
     expect(new Set(courses.map(course => course.id)).size).toBe(courses.length);
     expect(new Set(courses.flatMap(course => course.phrases.map(phrase => phrase.id))).size).toBe(courses.flatMap(course => course.phrases).length);
-    for (const topic of courseTopics) expect(courses.filter(course => course.topicId === topic.id), topic.name).toHaveLength(6);
+    const exercises = courses.flatMap(course => course.exercises);
+    expect(new Set(exercises.map(exercise => exercise.id)).size).toBe(exercises.length);
+    for (const topic of courseTopics) expect(courses.filter(course => course.topicId === topic.id), topic.name).toHaveLength(9);
   });
   it("contains full dialogues, vocabulary, grammar and meaningful practice in every lesson", () => {
     for (const course of courses) {
@@ -56,7 +58,7 @@ describe("scene course publication checks", () => {
       return hanziCount === syllableCount ? [] : [`${course.id}: ${item.hanzi} (${hanziCount}) / ${item.jyutping} (${syllableCount})`];
     }));
     expect(mismatches).toEqual([]);
-    expect(uniqueCoursePhrases).toBeGreaterThan(650);
-    expect(uniqueCourseWords).toBeGreaterThan(400);
+    expect(uniqueCoursePhrases).toBeGreaterThan(1000);
+    expect(uniqueCourseWords).toBeGreaterThan(800);
   });
 });
