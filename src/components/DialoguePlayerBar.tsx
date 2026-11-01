@@ -17,6 +17,28 @@ interface DialoguePlayerBarProps {
   onWaitingChange: (waiting: boolean) => void;
 }
 
+function waitForCantoneseVoice(timeoutMs = 600): Promise<SpeechSynthesisVoice | null> {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    return Promise.resolve(null);
+  }
+  const existing = window.speechSynthesis.getVoices();
+  if (existing.length > 0) {
+    return Promise.resolve(selectCantoneseVoice(existing));
+  }
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.speechSynthesis.removeEventListener("voiceschanged", onVoicesChanged);
+      resolve(selectCantoneseVoice(window.speechSynthesis.getVoices()));
+    };
+    const onVoicesChanged = () => finish();
+    window.speechSynthesis.addEventListener("voiceschanged", onVoicesChanged);
+    window.setTimeout(finish, timeoutMs);
+  });
+}
+
 export function DialoguePlayerBar({
   lines,
   speakers,
@@ -30,36 +52,79 @@ export function DialoguePlayerBar({
   const [playing, setPlaying] = useState(false);
   const [error, setError] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const timerRef = useRef<number | null>(null);
   const playingRef = useRef(false);
+  const internalAudioDispatchRef = useRef(false);
+  const cachedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const roleplayRef = useRef<RoleplayMode>(roleplay);
   roleplayRef.current = roleplay;
+
+  const clearCurrentMedia = useCallback(() => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if (utteranceRef.current) {
+      utteranceRef.current.onend = null;
+      utteranceRef.current.onerror = null;
+      utteranceRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+  }, []);
 
   const stopAll = useCallback(() => {
     playingRef.current = false;
     setPlaying(false);
     onWaitingChange(false);
     onActiveChange(null);
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-  }, [onActiveChange, onWaitingChange]);
+    clearCurrentMedia();
+  }, [clearCurrentMedia, onActiveChange, onWaitingChange]);
 
-  useEffect(() => () => stopAll(), [stopAll]);
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return undefined;
+    const refresh = () => {
+      cachedVoiceRef.current = selectCantoneseVoice(window.speechSynthesis.getVoices());
+    };
+    refresh();
+    window.speechSynthesis.addEventListener("voiceschanged", refresh);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", refresh);
+  }, []);
 
-  const playStep = useCallback((index: number) => {
+  useEffect(() => {
+    const onExternalAudio = () => {
+      if (internalAudioDispatchRef.current) return;
+      if (playingRef.current) stopAll();
+    };
+    window.addEventListener("dojo:audio-start", onExternalAudio);
+    return () => {
+      window.removeEventListener("dojo:audio-start", onExternalAudio);
+      stopAll();
+    };
+  }, [stopAll]);
+
+  const dispatchInternalAudioStart = () => {
+    internalAudioDispatchRef.current = true;
+    window.dispatchEvent(new Event("dojo:audio-start"));
+    internalAudioDispatchRef.current = false;
+  };
+
+  const playStep = useCallback(async (index: number) => {
     if (!playingRef.current || index >= lines.length) {
       stopAll();
       return;
     }
+    clearCurrentMedia();
+    dispatchInternalAudioStart();
+
     const line = lines[index]!;
     onActiveChange(index);
     const el = document.getElementById(line.id);
@@ -75,21 +140,25 @@ export function DialoguePlayerBar({
     }
 
     onWaitingChange(false);
-    const next = () => {
+    const scheduleNext = () => {
       if (!playingRef.current) return;
-      timerRef.current = window.setTimeout(() => playStep(index + 1), 420);
+      timerRef.current = window.setTimeout(() => {
+        void playStep(index + 1);
+      }, 420);
     };
 
     const staticUrl = resolvePhraseAudio(line);
     if (staticUrl) {
       const player = new Audio(staticUrl);
       audioRef.current = player;
-      player.onended = next;
+      player.onended = scheduleNext;
       player.onerror = () => {
+        if (!playingRef.current) return;
         setError("对话音频播放失败，请检查设备音量。");
         stopAll();
       };
       void player.play().catch(() => {
+        if (!playingRef.current) return;
         setError("浏览器阻止了自动播放，请再按一次。");
         stopAll();
       });
@@ -102,38 +171,47 @@ export function DialoguePlayerBar({
       return;
     }
 
-    window.speechSynthesis.cancel();
-    const voice = selectCantoneseVoice(window.speechSynthesis.getVoices());
+    const voice = cachedVoiceRef.current ?? (await waitForCantoneseVoice());
+    if (!playingRef.current) return;
+    cachedVoiceRef.current = voice;
     if (!voice) {
-      setError("未检测到“广东话（香港）”语音包，请安装后再试连播。");
+      setError("未检测到“广东话（香港）”语音包，请在系统中安装广东话语音后再试连播。");
       stopAll();
       return;
     }
 
     const utterance = new SpeechSynthesisUtterance(line.hanzi.replace(/[……]/g, ""));
+    utteranceRef.current = utterance;
     utterance.lang = "zh-HK";
     utterance.voice = voice;
     utterance.rate = 0.84;
-    utterance.onend = next;
-    utterance.onerror = () => {
+    utterance.onend = () => {
+      utteranceRef.current = null;
+      scheduleNext();
+    };
+    utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+      utteranceRef.current = null;
+      if (!playingRef.current || event.error === "canceled" || event.error === "interrupted") {
+        return;
+      }
       setError("语音播放中断，请重试。");
       stopAll();
     };
     window.speechSynthesis.speak(utterance);
-  }, [lines, onActiveChange, onWaitingChange, stopAll]);
+  }, [clearCurrentMedia, lines, onActiveChange, onWaitingChange, stopAll]);
 
   const startPlayback = () => {
     setError("");
-    window.dispatchEvent(new Event("dojo:audio-start"));
+    dispatchInternalAudioStart();
     playingRef.current = true;
     setPlaying(true);
-    playStep(0);
+    void playStep(0);
   };
 
   const continueAfterUserTurn = () => {
     if (!playingRef.current || activeIndex === null) return;
     onWaitingChange(false);
-    playStep(activeIndex + 1);
+    void playStep(activeIndex + 1);
   };
 
   return (

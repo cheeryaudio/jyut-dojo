@@ -6,12 +6,14 @@ import { InteractivePracticePanel } from "../components/InteractivePracticePanel
 import { courses, courseById } from "../data/courses";
 import {
   getCourseMistakes,
+  getDailyNewPhraseLimit,
+  getDuePracticePhrases,
   getPracticePhrases,
-  isPhraseDue,
   previewPhraseIntervalLabel,
   sortPracticePhrasesByFSRS,
 } from "../lib/coursePractice";
 import { useCourseStore } from "../stores/courseStore";
+import { useLearningPlanStore } from "../stores/learningPlanStore";
 import type { ReviewRating } from "../types/domain";
 
 const LegacyWordReview = lazy(() => import("../components/LegacyWordReview").then(module => ({ default: module.LegacyWordReview })));
@@ -114,25 +116,50 @@ export function ReviewPage() {
   const [params, setParams] = useSearchParams();
   const rawTab = params.get("tab");
   const tab = rawTab === "mistakes" ? "mistakes" : rawTab === "legacy" ? "legacy" : rawTab === "drills" ? "drills" : "expressions";
+  const paramSource = params.get("source");
   const { progress, bookmarks, lastCourseId, phraseReviews, hydrated, hydrate, storageError } = useCourseStore();
-  const [source, setSource] = useState<"saved" | "learned">("saved");
-  const [onlyDue, setOnlyDue] = useState(false);
-  useEffect(() => { void hydrate(); }, [hydrate]);
+  const { profile, hydrate: hydrateProfile } = useLearningPlanStore();
+  const [manualSource, setManualSource] = useState<"saved" | "learned" | null>(null);
+  const [onlyDue, setOnlyDue] = useState(true);
+  useEffect(() => {
+    void hydrate();
+    void hydrateProfile().catch(() => undefined);
+  }, [hydrate, hydrateProfile]);
+
+  const hasCompletedCourses = useMemo(
+    () => courses.some(c => Boolean(progress[c.id]?.completedAt)),
+    [progress],
+  );
+  const source: "saved" | "learned" = manualSource
+    ?? (paramSource === "learned" ? "learned" : paramSource === "saved" ? "saved" : (bookmarks.length === 0 && hasCompletedCourses ? "learned" : "saved"));
+
   const [practiceRound, setPracticeRound] = useState(0);
   const [session, setSession] = useState<{ source: "saved" | "learned"; deck: PracticePhrase[] } | null>(null);
+  const dailyMinutes = profile?.dailyMinutes ?? 20;
 
   const allInScope = useMemo(
     () => sortPracticePhrasesByFSRS(getPracticePhrases(progress, bookmarks, source), phraseReviews),
     [progress, bookmarks, source, phraseReviews],
   );
   const dueInScope = useMemo(
-    () => allInScope.filter(item => isPhraseDue(phraseReviews[item.phrase.id])),
-    [allInScope, phraseReviews],
+    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, source, new Date(), { dailyMinutes }),
+    [progress, bookmarks, phraseReviews, source, dailyMinutes],
+  );
+  const dueSavedCount = useMemo(
+    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, "saved", new Date(), { dailyMinutes }).length,
+    [progress, bookmarks, phraseReviews, dailyMinutes],
+  );
+  const dueLearnedCount = useMemo(
+    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, "learned", new Date(), { dailyMinutes }).length,
+    [progress, bookmarks, phraseReviews, dailyMinutes],
   );
   const deck = onlyDue && dueInScope.length > 0 ? dueInScope : allInScope;
 
   const mistakes = getCourseMistakes(progress);
-  const chooseSource = (value: "saved" | "learned") => { setSource(value); setSession(null); };
+  const chooseSource = (value: "saved" | "learned") => {
+    setManualSource(value);
+    setSession(null);
+  };
   const defaultDrillCourse = lastCourseId && courseById.has(lastCourseId) ? lastCourseId : courses[0]!.id;
 
   return <div className="practice-page page-enter"><header className="journal-header"><div><h1>温习</h1></div></header>
@@ -166,8 +193,12 @@ export function ReviewPage() {
       <>
         <div className="recall-toolbar">
           <div className="segmented">
-            <button type="button" aria-pressed={source === "saved"} onClick={() => chooseSource("saved")}>我的收藏</button>
-            <button type="button" aria-pressed={source === "learned"} onClick={() => chooseSource("learned")}>已完成课程</button>
+            <button type="button" aria-pressed={source === "saved"} onClick={() => chooseSource("saved")}>
+              我的收藏{dueSavedCount > 0 ? ` (${dueSavedCount})` : ""}
+            </button>
+            <button type="button" aria-pressed={source === "learned"} onClick={() => chooseSource("learned")}>
+              已完成课程{dueLearnedCount > 0 ? ` (${dueLearnedCount})` : ""}
+            </button>
           </div>
           {allInScope.length > 0 && (
             <label className="unfinished-filter">
@@ -176,7 +207,7 @@ export function ReviewPage() {
                 checked={onlyDue}
                 onChange={e => { setOnlyDue(e.target.checked); setSession(null); }}
               />
-              只看今日到期 ({dueInScope.length})
+              只看今日计划 ({dueInScope.length})
             </label>
           )}
           <Link to="/saved" className="text-link">管理收藏 <ArrowRight size={16} /></Link>
@@ -191,8 +222,10 @@ export function ReviewPage() {
         ) : (
           <div className="practice-start">
             <div>
-              <p className="small-label">{source === "saved" ? "收藏表达 · FSRS 排程" : "已完成课程的表达 · FSRS 排程"}</p>
-              <h2>{dueInScope.length > 0 ? `今日到期 ${dueInScope.length} 句（共 ${allInScope.length} 句）` : `全部 ${allInScope.length} 句已按时温习`}</h2>
+              <p className="small-label">
+                {source === "saved" ? "收藏表达 · FSRS 排程" : "已完成课程的表达 · FSRS 排程"}（每日新句上限 {getDailyNewPhraseLimit(dailyMinutes)} 句）
+              </p>
+              <h2>{dueInScope.length > 0 ? `今日待温习 ${dueInScope.length} 句（库内共 ${allInScope.length} 句）` : `今日计划已完成（库内共 ${allInScope.length} 句）`}</h2>
             </div>
             <button
               className="button-primary"

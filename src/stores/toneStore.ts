@@ -18,6 +18,7 @@ interface ToneState {
   hydrated: boolean;
   hydrate: () => Promise<void>;
   recordAnswer: (tone: ToneNumber, pair: TonePair, correct: boolean, level: number) => Promise<void>;
+  importToneProgress: (incoming: ToneProgress, mode?: "merge" | "replace") => Promise<void>;
 }
 
 const toneStorage = localforage.createInstance({
@@ -52,5 +53,18 @@ export const useToneStore = create<ToneState>((set, get) => ({
       toneStorage.setItem(STORAGE_KEY, updated),
       useActivityStore.getState().recordActivity(),
     ]);
+  },
+  importToneProgress: async (incoming, mode = "merge") => {
+    if (!get().hydrated) await get().hydrate();
+    if (mode === "replace" || incoming.totalAnswers > get().progress.totalAnswers) {
+      const next: ToneProgress = {
+        bestLevel: Math.max(mode === "replace" ? 1 : get().progress.bestLevel, incoming.bestLevel ?? 1),
+        totalAnswers: incoming.totalAnswers ?? 0,
+        byTone: incoming.byTone ?? {},
+        byPair: incoming.byPair ?? {},
+      };
+      set({ progress: next });
+      await toneStorage.setItem(STORAGE_KEY, next);
+    }
   },
 }));

@@ -10,6 +10,7 @@ interface LearningState {
   hydrated: boolean;
   hydrate: () => Promise<void>;
   recordQuizResult: (scenarioId: string, score: number) => Promise<void>;
+  importScenarioProgress: (incoming: ScenarioProgressMap, mode?: "merge" | "replace") => Promise<void>;
 }
 
 const progressStore = localforage.createInstance({
@@ -42,5 +43,31 @@ export const useLearningStore = create<LearningState>((set, get) => ({
       progressStore.setItem(STORAGE_KEY, updated),
       useActivityStore.getState().recordActivity(),
     ]);
+  },
+  importScenarioProgress: async (incoming, mode = "merge") => {
+    if (!get().hydrated) await get().hydrate();
+    if (mode === "replace") {
+      set({ scenarioProgress: incoming });
+      await progressStore.setItem(STORAGE_KEY, incoming);
+      return;
+    }
+    const merged: ScenarioProgressMap = { ...get().scenarioProgress };
+    for (const [id, inc] of Object.entries(incoming)) {
+      const cur = merged[id];
+      if (!cur) {
+        merged[id] = inc;
+      } else {
+        const curNewer = Date.parse(cur.completedAt) >= Date.parse(inc.completedAt);
+        merged[id] = {
+          scenarioId: id,
+          bestStars: Math.max(cur.bestStars, inc.bestStars),
+          attempts: Math.max(cur.attempts, inc.attempts),
+          lastScore: curNewer ? cur.lastScore : inc.lastScore,
+          completedAt: curNewer ? cur.completedAt : inc.completedAt,
+        };
+      }
+    }
+    set({ scenarioProgress: merged });
+    await progressStore.setItem(STORAGE_KEY, merged);
   },
 }));

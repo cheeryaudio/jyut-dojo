@@ -8,7 +8,8 @@ import {
   previewPhraseIntervalLabel,
   sortPracticePhrasesByFSRS,
 } from "./coursePractice";
-import type { CourseProgress, PhraseReviewRecord } from "../stores/courseStore";
+import { scheduleReview } from "./srs/fsrs";
+import { toPhraseReviewCard, type CourseProgress, type PhraseReviewRecord } from "../stores/courseStore";
 
 const course = courses[0]!;
 const question = course.exercises[0]!;
@@ -30,8 +31,8 @@ describe("life course practice scope and FSRS expression scheduling", () => {
     expect(getPracticePhrases({ [course.id]: { ...saved[course.id]!, completedAt: "2026-10-18" } }, [], "learned")).toHaveLength(course.phrases.length);
   });
 
-  it("identifies due expressions and sorts due items before future-scheduled FSRS items", () => {
-    const now = new Date("2026-11-02T00:00:00.000Z");
+  it("identifies due expressions, prioritizes overdue reviews before new items, and respects daily new-card caps", () => {
+    const now = new Date("2026-11-02T12:00:00.000Z");
     const p1 = course.phrases[0]!.id;
     const p2 = course.phrases[1]!.id;
     const p3 = course.phrases[2]!.id;
@@ -51,7 +52,7 @@ describe("life course practice scope and FSRS expression scheduling", () => {
         due: "2026-11-01T12:00:00.000Z",
         stability: 2,
         difficulty: 5,
-        reps: 1,
+        reps: 2,
       },
     };
 
@@ -59,21 +60,35 @@ describe("life course practice scope and FSRS expression scheduling", () => {
     expect(isPhraseDue(reviews[p2], now)).toBe(true);
     expect(isPhraseDue(reviews[p3], now)).toBe(true);
 
+    // Overdue review (p2) comes before brand-new unreviewed item (p3)
     const dueList = getDuePracticePhrases({}, [p1, p2, p3], reviews, "saved", now);
-    expect(dueList.map(item => item.phrase.id)).toEqual([p3, p2]);
+    expect(dueList.map(item => item.phrase.id)).toEqual([p2, p3]);
 
     const sortedAll = sortPracticePhrasesByFSRS(
       getPracticePhrases({}, [p1, p2, p3], "saved"),
       reviews,
       now,
     );
-    expect(sortedAll.map(item => item.phrase.id)).toEqual([p3, p2, p1]);
+    expect(sortedAll.map(item => item.phrase.id)).toEqual([p2, p3, p1]);
+
+    // When 3 courses (36 phrases) are completed at 10 min/day (limit 12 new/day), only 12 new cards are surfaced
+    const threeCompleted: Record<string, CourseProgress> = {
+      [courses[0]!.id]: { openedAt: "2026-11-01", completedAt: "2026-11-01", answers: {} },
+      [courses[1]!.id]: { openedAt: "2026-11-01", completedAt: "2026-11-01", answers: {} },
+      [courses[2]!.id]: { openedAt: "2026-11-01", completedAt: "2026-11-01", answers: {} },
+    };
+    const capped = getDuePracticePhrases(threeCompleted, [], {}, "learned", now, { dailyMinutes: 10 });
+    expect(capped).toHaveLength(12);
   });
 
-  it("previews human-readable FSRS intervals for all four ratings", () => {
+  it("uses identical card conversion for previewPhraseIntervalLabel and actual scheduleReview on legacy records", () => {
     const now = new Date("2026-11-02T00:00:00.000Z");
-    expect(previewPhraseIntervalLabel("p1", undefined, "again", now)).toBe("10 分钟后");
-    expect(previewPhraseIntervalLabel("p1", undefined, "good", now)).toMatch(/^\d+ 天后$/);
-    expect(previewPhraseIntervalLabel("p1", undefined, "easy", now)).toMatch(/^\d+ 天后$/);
+    const legacyRemembered: PhraseReviewRecord = {
+      reviewedAt: "2026-10-30T00:00:00.000Z",
+      remembered: true,
+    };
+    const scheduled = scheduleReview(toPhraseReviewCard("p1", legacyRemembered, now), "good", now);
+    const expectedDays = Math.max(1, Math.round((Date.parse(scheduled.due) - now.getTime()) / 86_400_000));
+    expect(previewPhraseIntervalLabel("p1", legacyRemembered, "good", now)).toBe(`${expectedDays} 天后`);
   });
 });

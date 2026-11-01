@@ -25,6 +25,7 @@ interface MasteryState {
   recordEvidence: (input: RecordEvidenceInput) => Promise<void>;
   scheduleDelayedCheck: (unitId: string, now?: Date) => Promise<void>;
   completeDelayedCheck: (unitId: string, score: number, capabilityIds: string[], now?: Date) => Promise<void>;
+  importMasteryData: (events: LearningEvent[], delayedChecks: DelayedCheck[], mode?: "merge" | "replace") => Promise<void>;
 }
 
 export const useMasteryStore = create<MasteryState>((set, get) => ({
@@ -63,6 +64,25 @@ export const useMasteryStore = create<MasteryState>((set, get) => ({
     await Promise.all([
       masteryStorage.setItem(CHECKS_KEY, delayedChecks),
       get().recordEvidence({ unitId, capabilityIds, stepId: "delayed", kind: "review", score }),
+    ]);
+  },
+  importMasteryData: async (incomingEvents, incomingChecks, mode = "merge") => {
+    if (!get().hydrated) await get().hydrate();
+    const eventsById = new Map<string, LearningEvent>();
+    if (mode !== "replace") {
+      for (const ev of get().events) eventsById.set(ev.id, ev);
+    }
+    for (const ev of incomingEvents) {
+      if (ev && typeof ev.id === "string") eventsById.set(ev.id, ev);
+    }
+    const mergedEvents = [...eventsById.values()].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const mergedChecks = mode === "replace"
+      ? incomingChecks
+      : [...get().delayedChecks, ...incomingChecks.filter(inc => !get().delayedChecks.some(cur => cur.unitId === inc.unitId && cur.due === inc.due))];
+    set({ events: mergedEvents, delayedChecks: mergedChecks });
+    await Promise.all([
+      masteryStorage.setItem(EVENTS_KEY, mergedEvents),
+      masteryStorage.setItem(CHECKS_KEY, mergedChecks),
     ]);
   },
 }));

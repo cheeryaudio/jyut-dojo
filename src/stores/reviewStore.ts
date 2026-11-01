@@ -23,6 +23,7 @@ interface ReviewState {
   syncCompletedLessons: (progress: ScenarioProgressMap) => Promise<void>;
   grade: (wordId: string, rating: ReviewRating, now?: Date) => Promise<void>;
   setMode: (mode: ReviewMode) => Promise<void>;
+  importCards: (incoming: ReviewCard[], mode?: "merge" | "replace") => Promise<void>;
 }
 
 export const useReviewStore = create<ReviewState>((set, get) => ({
@@ -63,5 +64,29 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
   setMode: async (mode) => {
     set({ mode });
     await reviewStorage.setItem(MODE_KEY, mode);
+  },
+  importCards: async (incoming, importMode = "merge") => {
+    if (!get().hydrated) await get().hydrate();
+    if (importMode === "replace") {
+      set({ cards: incoming });
+      await reviewStorage.setItem(CARDS_KEY, incoming);
+      return;
+    }
+    const byId = new Map(get().cards.map(c => [c.wordId, c]));
+    for (const inc of incoming) {
+      const cur = byId.get(inc.wordId);
+      if (!cur) {
+        byId.set(inc.wordId, inc);
+      } else {
+        const curTime = cur.lastReview ? Date.parse(cur.lastReview) : 0;
+        const incTime = inc.lastReview ? Date.parse(inc.lastReview) : 0;
+        if (incTime > curTime || (incTime === curTime && inc.reps > cur.reps)) {
+          byId.set(inc.wordId, inc);
+        }
+      }
+    }
+    const merged = [...byId.values()];
+    set({ cards: merged });
+    await reviewStorage.setItem(CARDS_KEY, merged);
   },
 }));

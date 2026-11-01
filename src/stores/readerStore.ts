@@ -112,7 +112,34 @@ export const useReaderStore = create<ReaderState>((set, get) => {
     importReaderData: async (rawProgress, mode = "merge") => {
       await get().hydrate();
       const sanitized = readProgress(rawProgress);
-      set({ progress: mode === "replace" ? sanitized : { ...get().progress, ...sanitized } });
+      if (mode === "replace") {
+        set({ progress: sanitized });
+        await persist();
+        return;
+      }
+      const next: Record<string, ReaderProgress> = { ...get().progress };
+      for (const [readerId, inc] of Object.entries(sanitized)) {
+        const cur = next[readerId];
+        if (!cur) {
+          next[readerId] = inc;
+          continue;
+        }
+        const reader = readerById.get(readerId);
+        const correctByQId = new Map(reader?.questions.map(q => [q.id, q.answer]) ?? []);
+        const answers: Record<string, string> = { ...cur.answers };
+        for (const [qId, incAns] of Object.entries(inc.answers)) {
+          const curAns = answers[qId];
+          if (!curAns || (curAns !== correctByQId.get(qId) && incAns === correctByQId.get(qId))) {
+            answers[qId] = incAns;
+          }
+        }
+        let completedAt = cur.completedAt ?? inc.completedAt;
+        if (cur.completedAt && inc.completedAt) {
+          completedAt = Date.parse(inc.completedAt) < Date.parse(cur.completedAt) ? inc.completedAt : cur.completedAt;
+        }
+        next[readerId] = { answers, ...(completedAt ? { completedAt } : {}) };
+      }
+      set({ progress: next });
       await persist();
     },
   };

@@ -44,7 +44,7 @@ function StudySettings({ unavailable }: { unavailable: boolean }) {
 export function HomePage() {
   const { progress, bookmarks, phraseReviews, lastCourseId, hydrated, hydrate, storageError } = useCourseStore();
   const { dates, hydrated: activityHydrated, hydrate: hydrateActivity } = useActivityStore();
-  const { hydrate: hydrateProfile } = useLearningPlanStore();
+  const { profile, hydrate: hydrateProfile } = useLearningPlanStore();
   const { cards, hydrated: reviewHydrated, hydrate: hydrateReview, syncCompletedLessons } = useReviewStore();
   const { scenarioProgress, hydrated: learningHydrated, hydrate: hydrateLearning } = useLearningStore();
   const [activityError, setActivityError] = useState(false);
@@ -70,15 +70,34 @@ export function HomePage() {
   const featured = ["food-drink", "getting-around", "friends"].map(topic => courses.find(course => course.topicId === topic)).filter(course => course !== undefined);
   const featuredReaders = [readers[0], readers[2], readers[7]].filter(reader => reader !== undefined);
   const due = cards.filter(card => new Date(card.due).getTime() <= Date.now()).length;
+  const dailyMinutes = profile?.dailyMinutes ?? 20;
+
   const dueSavedPhrases = useMemo(
-    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, "saved").length,
-    [progress, bookmarks, phraseReviews],
+    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, "saved", new Date(), { dailyMinutes }).length,
+    [progress, bookmarks, phraseReviews, dailyMinutes],
   );
   const dueLearnedPhrases = useMemo(
-    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, "learned").length,
-    [progress, bookmarks, phraseReviews],
+    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, "learned", new Date(), { dailyMinutes }).length,
+    [progress, bookmarks, phraseReviews, dailyMinutes],
   );
-  const dueExpressionsCount = dueSavedPhrases > 0 ? dueSavedPhrases : dueLearnedPhrases;
+  const reviewHref = dueSavedPhrases > 0
+    ? "/review?source=saved"
+    : dueLearnedPhrases > 0
+      ? "/review?source=learned"
+      : bookmarks.length > 0
+        ? "/review?source=saved"
+        : reviewHydrated && due > 0
+          ? "/review?tab=legacy"
+          : "/review";
+  const reviewLabel = dueSavedPhrases > 0
+    ? `温习 ${dueSavedPhrases} 句收藏到期`
+    : dueLearnedPhrases > 0
+      ? `温习 ${dueLearnedPhrases} 句课程到期`
+      : bookmarks.length > 0
+        ? `温习 ${bookmarks.length} 句收藏`
+        : reviewHydrated && due > 0
+          ? `${due} 张待温习词卡`
+          : "温习";
 
   return <div className="home-page page-enter">
     <section className="welcome-hero">
@@ -104,7 +123,7 @@ export function HomePage() {
       <div className="today-stats">
         <div><strong>{hydrated ? completed : "…"}</strong><span>已完成课程</span></div>
         <div><strong>{activityHydrated ? calculateStreak(dates) : "…"}</strong><span>连续学习天数</span></div>
-        <Link to={hydrated && (bookmarks.length > 0 || dueExpressionsCount > 0) ? "/review" : reviewHydrated && due > 0 ? "/review?tab=legacy" : "/review"}><Repeat size={18} /><span>{hydrated && dueExpressionsCount > 0 ? `温习 ${dueExpressionsCount} 句到期表达` : hydrated && bookmarks.length > 0 ? `温习 ${bookmarks.length} 句收藏` : reviewHydrated && due > 0 ? `${due} 张待温习词卡` : "温习"}</span><ArrowRight size={15} /></Link>
+        <Link to={hydrated ? reviewHref : "/review"}><Repeat size={18} /><span>{hydrated ? reviewLabel : "温习"}</span><ArrowRight size={15} /></Link>
       </div>
     </section>
     <section className="home-discover">
