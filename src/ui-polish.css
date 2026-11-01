@@ -12,9 +12,62 @@
 .catalog-intro h1,.readers-intro h1,.expressions-intro h1{margin-top:0}
 .welcome-copy h1{margin-top:0}.hero-expression-link{display:flex;width:fit-content;margin-top:15px}
 .readers-course-link strong{margin-top:0}
+
+/* Dialogue sequential player & roleplay */
+.dialogue-player-bar{display:flex;flex-direction:column;gap:12px;margin:0 0 14px;padding:12px 16px;border:1px solid var(--dojo-line);border-radius:10px;background:var(--dojo-surface)}
+.dialogue-player-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.dialogue-play-btn,.dialogue-stop-btn{display:inline-flex;align-items:center;gap:7px}
+.dialogue-roleplay-switch{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px}
+.dialogue-roleplay-switch .roleplay-label{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--dojo-muted);margin-right:2px}
+.dialogue-roleplay-switch button{min-height:34px;padding:5px 10px;border:1px solid var(--dojo-line);border-radius:6px;background:var(--dojo-surface);color:var(--dojo-muted);font-size:12px}
+.dialogue-roleplay-switch button[aria-pressed="true"]{background:var(--dojo-soft);border-color:var(--dojo-accent);color:var(--dojo-accent);font-weight:500}
+.dialogue-user-turn{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:8px;background:var(--dojo-sun-soft);color:var(--dojo-on-sun);font-size:13px}
+.dialogue-user-turn strong{display:inline-flex;align-items:center;gap:6px;margin-right:8px}
+.dialogue-player-error{margin:0;font-size:12px;color:var(--dojo-negative)}
+.phrase-row.is-active-line{background:var(--dojo-soft);border-radius:8px;padding-left:10px;padding-right:10px;transition:background-color 180ms}
+.roleplay-badge{display:inline-block;margin-top:4px;padding:1px 6px;border-radius:4px;background:var(--dojo-soft);color:var(--dojo-accent);font-size:10px;font-weight:600}
+.roleplay-prompt-inline{margin:6px 0 0;font-size:12px;font-weight:600;color:var(--dojo-accent)}
+
+/* FSRS 4-grade rating buttons */
+.fsrs-rating-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;width:100%}
+.fsrs-rating-grid button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:54px;padding:8px 10px;text-align:center}
+.fsrs-rating-grid button small{font-size:11px;opacity:.82;font-weight:400}
+
+/* Interactive Listening & Sentence Puzzle exercises */
+.interactive-practice-panel{display:flex;flex-direction:column;gap:16px}
+.interactive-mode-tabs{display:inline-flex;flex-wrap:wrap;gap:8px}
+.interactive-mode-tabs button{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:7px 13px;border:1px solid var(--dojo-line);border-radius:8px;background:var(--dojo-surface);color:var(--dojo-muted);font-size:13px}
+.interactive-mode-tabs button.active{background:var(--dojo-soft);border-color:var(--dojo-accent);color:var(--dojo-accent);font-weight:500}
+.listening-prompt-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:10px 0 14px}
+.puzzle-answer-slot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-height:54px;margin:12px 0;padding:10px 12px;border:1px dashed var(--dojo-line);border-radius:8px;background:var(--dojo-tint)}
+.puzzle-answer-slot.is-correct{border-style:solid;border-color:var(--dojo-accent);background:var(--dojo-soft)}
+.puzzle-answer-slot.is-incorrect{border-style:solid;border-color:var(--dojo-negative)}
+.puzzle-placeholder{font-size:13px;color:var(--dojo-muted)}
+.puzzle-bank{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.puzzle-chip{min-height:38px;padding:6px 13px;border:1px solid var(--dojo-line);border-radius:8px;background:var(--dojo-surface);color:var(--dojo-text);font-size:15px;font-weight:500;transition:border-color 120ms,background-color 120ms}
+.puzzle-chip:hover:not(:disabled){border-color:var(--dojo-accent);background:var(--dojo-soft)}
+.puzzle-chip.picked{border-color:var(--dojo-accent);background:var(--dojo-surface);color:var(--dojo-accent)}
+.puzzle-chip.used{opacity:.35;cursor:default}
+.puzzle-toolbar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:6px}
+.puzzle-reset-btn{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:6px 12px;font-size:12px}
+.drills-course-picker{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:20px 0 16px;padding:14px 16px;border:1px solid var(--dojo-line);border-radius:10px;background:var(--dojo-surface)}
+.drills-course-picker select{min-height:38px;padding:6px 10px;border:1px solid var(--dojo-line);border-radius:7px;background:var(--dojo-surface);color:var(--dojo-text);font-size:13px;flex:1;min-width:200px}
+
+/* Study Backup & Restore Panel */
+.backup-panel{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin-top:28px;padding:20px 22px;border:1px solid var(--dojo-line);border-radius:10px;background:var(--dojo-surface)}
+.backup-panel h2{margin:0 0 4px;font-size:18px;font-weight:500}
+.backup-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.backup-actions button{display:inline-flex;align-items:center;gap:6px}
+.backup-feedback{width:100%;margin:4px 0 0;font-size:12px}
+.backup-feedback.is-success{color:var(--dojo-accent)}
+.backup-feedback.is-error{color:var(--dojo-negative)}
+
 @media(max-width:767px){
  .catalog-pagination{align-items:flex-start;flex-direction:column;font-size:11px;gap:13px;margin-top:23px}.catalog-pagination>div{width:100%;justify-content:space-between;gap:10px}
  .saved-actions{gap:14px}.saved-actions .button-outline{font-size:12px}
  .catalog-intro h1,.readers-intro h1,.expressions-intro h1{margin-top:0}
  .hero-expression-link{margin-top:13px}
+ .fsrs-rating-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .dialogue-player-actions{flex-direction:column;align-items:stretch}
+ .backup-panel{flex-direction:column;align-items:flex-start}
 }

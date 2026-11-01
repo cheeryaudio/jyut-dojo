@@ -4,6 +4,14 @@
 
 仓库包含 Web/PWA 前端与 Android 工程，沿用 `dev.benbox.jyutdojo` 应用标识。构建命令为 `npm run check`，Android 打包前运行 `npx cap sync android`。旧版 `server/`、独立资源与文档保留，新前端未接入旧版云端同步服务。下文 D 盘路径指本机开发副本，不是部署要求。
 
+## 2026-11-02：FSRS 表达排程、对话连播角色对练、盲听造句与记录备份
+
+- **表达回想接入 FSRS 间隔重复排程**：`src/stores/courseStore.ts` 与 `src/lib/coursePractice.ts` 为生活课收藏与已学完表达接入 FSRS 算法（支持「需要再练 / 有点吃力 / 记得 / 非常熟练」四档评级与下次间隔预览），向下兼容既有 `phraseReviews` 记录；首页与温习页实时提示今日到期表达数量并支持「只看今日到期」筛选。
+- **场景对话整段连播与分角色对练**：课堂页新增 `src/components/DialoguePlayerBar.tsx`，支持整段双人对话按序连播、当前台词自动高亮跟随，以及 A/B 角色扮演对练模式（轮到学习者扮演的角色时自动暂停并提示开口朗读）。
+- **新增「盲听辨句」与「粤语词块造句」互动精练**：`src/lib/interactiveExercises.ts` 与 `src/components/InteractivePracticePanel.tsx` 基于 90 节生活课词组与台词动态生成盲听选意与粤语语序词块拼句题，可在每节课的「课后练习 -> 盲听与造句」及温习页「盲听与造句」分页随时练习。
+- **学习记录一键导出与导入恢复 (JSON)**：`src/lib/backup.ts` 与进度页 `/progress` 新增学习记录 JSON 导出备份与合并导入恢复功能，支持跨设备迁移课程进度、收藏表达、FSRS 温习记录、短读进度与连续学习日历。
+- **Android 工程同步与 CI 产物上传**：执行 `npx cap sync android` 同步最新 Web 构建，并在 GitHub Actions CI 工作流中自动构建及上传最新 `JyutDojo-Android-debug` APK 构件。
+
 ## 2026-10-19：生活课程扩充到 90 节
 
 - 新增 **30 节完整生活课**，十个主题各增加三节，目前每个主题九节。新增 **360 句表达、300 条词组记录、60 个句型与 180 道课内练习**；其中 360 句均不与旧课重复，词组跨课去重后新增 240 个。
@@ -134,7 +142,9 @@ npm test
 - 能力證據聚合、單元完成條件同薄弱能力定位
 - 90 節生活課的唯一 ID、十個主題各九節、課堂完整性、粵拼格式、入聲調值、字音數量、練習選項與去重內容總量
 - 30 篇生活短讀的主題覆蓋（每個主題 3 篇）、唯一 ID、180 段正文與詞組資料、粵拼格式、入聲調值、字音數量，以及 90 道理解題的唯一 ID、選項與答案位置
-- 生活課錯題的範圍與訂正移除；收藏表達與已學完課程表達的回想範圍
+- 生活課錯題的範圍與訂正移除；收藏表達與已學完課程表達的 FSRS 到期計算、優先排序與間隔預覽
+- 盲聽辨句與粵語詞塊造句練習的自動生成、詞塊切分還原與干擾項唯一性
+- 學習記錄 JSON 備份導出、結構校驗與合併恢復
 - 生活課與短讀的並行載入、載入期間作答或收藏、舊記錄保留、快速作答保存、讀取失敗保護及完成記錄
 - 裝置粵語語音的選擇：優先香港粵語或 `yue` 語系，沒有粵語聲音時不自動改播普通話
 
@@ -201,10 +211,13 @@ npm run android:build
 - `src/data/readers/`: 30 篇生活短讀的正文、詞組表與 90 道理解題；`everyday-a.ts`、`everyday-b.ts` 保留第二輪資料，`expansion-a.ts`、`expansion-b.ts` 提供第三輪新增 20 篇，`index.ts` 匯總資料及索引
 - `src/pages/ExpressionsPage.tsx`、`src/expressions.css`: 聚合既有生活課句子的常用表達手冊，沿用 `courseStore.ts` 的收藏記錄
 - `src/components/LearningLibraryNav.tsx`: 生活課程、短讀與常用表達的共用入口導航
+- `src/components/DialoguePlayerBar.tsx`: 課堂對話整段連播、高亮跟隨與分角色對練控制欄
+- `src/components/InteractivePracticePanel.tsx`、`src/lib/interactiveExercises.ts`: 盲聽辨句與粵語詞塊造句練習生成器與互動面板
+- `src/lib/backup.ts`: 學習記錄 JSON 導出備份與合併恢復
 - `src/types/reader.ts`: 生活短讀資料型別
-- `src/lib/coursePractice.ts`: 生活課錯題與自主回想範圍的計算
-- `src/stores/`: 情境、聲調、復習與活動日期的 IndexedDB 狀態；`courseStore.ts` 保存生活課、收藏與表達回想，`readerStore.ts` 獨立保存短讀進度
+- `src/lib/coursePractice.ts`: 生活課錯題與 FSRS 表達回想範圍及到期排程計算
+- `src/stores/`: 情境、聲調、復習與活動日期的 IndexedDB 狀態；`courseStore.ts` 保存生活課、收藏與 FSRS 表達回想，`readerStore.ts` 獨立保存短讀進度
 - `scripts/gen-audio.mjs`: 冪等音訊生成
 - `scripts/validate-content.mjs`: 內容與音訊完整性驗證
 
-完成原有六個情境的測驗後，該情境詞語會自動加入 FSRS 復習隊列；新生活課的表達回想與生活短讀不會因此加入該隊列。學習資料只保存在目前瀏覽器或 Android 應用的本機 WebView；兩端目前不會自動同步。
+完成原有六個情境的測驗後，該情境詞語會自動加入 FSRS 復習隊列；生活課收藏與已學完表達則透過 `courseStore.ts` 的 FSRS 排程在溫習頁進行間隔回想。可透過進度頁導出或導入 JSON 備份文件在裝置間遷移學習記錄。

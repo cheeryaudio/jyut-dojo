@@ -1,11 +1,12 @@
 import { ArrowRight, BookOpen, Check, Headphones, MapTrifold, Repeat, SlidersHorizontal, Waveform } from "@phosphor-icons/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CourseCover } from "../components/CourseCover";
 import { CourseCard } from "../components/CourseCard";
 import { LegacyDailyPlan } from "../components/LegacyDailyPlan";
 import { courses, courseById, courseTopics, uniqueCoursePhrases } from "../data/courses";
 import { readers } from "../data/readers";
+import { getDuePracticePhrases } from "../lib/coursePractice";
 import { useCourseStore } from "../stores/courseStore";
 import { calculateStreak, useActivityStore } from "../stores/activityStore";
 import { useLearningPlanStore } from "../stores/learningPlanStore";
@@ -41,7 +42,7 @@ function StudySettings({ unavailable }: { unavailable: boolean }) {
 }
 
 export function HomePage() {
-  const { progress, bookmarks, lastCourseId, hydrated, hydrate, storageError } = useCourseStore();
+  const { progress, bookmarks, phraseReviews, lastCourseId, hydrated, hydrate, storageError } = useCourseStore();
   const { dates, hydrated: activityHydrated, hydrate: hydrateActivity } = useActivityStore();
   const { hydrate: hydrateProfile } = useLearningPlanStore();
   const { cards, hydrated: reviewHydrated, hydrate: hydrateReview, syncCompletedLessons } = useReviewStore();
@@ -69,6 +70,15 @@ export function HomePage() {
   const featured = ["food-drink", "getting-around", "friends"].map(topic => courses.find(course => course.topicId === topic)).filter(course => course !== undefined);
   const featuredReaders = [readers[0], readers[2], readers[7]].filter(reader => reader !== undefined);
   const due = cards.filter(card => new Date(card.due).getTime() <= Date.now()).length;
+  const dueSavedPhrases = useMemo(
+    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, "saved").length,
+    [progress, bookmarks, phraseReviews],
+  );
+  const dueLearnedPhrases = useMemo(
+    () => getDuePracticePhrases(progress, bookmarks, phraseReviews, "learned").length,
+    [progress, bookmarks, phraseReviews],
+  );
+  const dueExpressionsCount = dueSavedPhrases > 0 ? dueSavedPhrases : dueLearnedPhrases;
 
   return <div className="home-page page-enter">
     <section className="welcome-hero">
@@ -94,7 +104,7 @@ export function HomePage() {
       <div className="today-stats">
         <div><strong>{hydrated ? completed : "…"}</strong><span>已完成课程</span></div>
         <div><strong>{activityHydrated ? calculateStreak(dates) : "…"}</strong><span>连续学习天数</span></div>
-        <Link to={hydrated && bookmarks.length > 0 ? "/review" : reviewHydrated && due > 0 ? "/review?tab=legacy" : "/review"}><Repeat size={18} /><span>{hydrated && bookmarks.length > 0 ? `温习 ${bookmarks.length} 句收藏` : reviewHydrated && due > 0 ? `${due} 张待温习词卡` : "温习"}</span><ArrowRight size={15} /></Link>
+        <Link to={hydrated && (bookmarks.length > 0 || dueExpressionsCount > 0) ? "/review" : reviewHydrated && due > 0 ? "/review?tab=legacy" : "/review"}><Repeat size={18} /><span>{hydrated && dueExpressionsCount > 0 ? `温习 ${dueExpressionsCount} 句到期表达` : hydrated && bookmarks.length > 0 ? `温习 ${bookmarks.length} 句收藏` : reviewHydrated && due > 0 ? `${due} 张待温习词卡` : "温习"}</span><ArrowRight size={15} /></Link>
       </div>
     </section>
     <section className="home-discover">

@@ -22,6 +22,7 @@ interface ActivityState {
   hydrated: boolean;
   hydrate: () => Promise<void>;
   recordActivity: (date?: Date) => Promise<void>;
+  importDates: (dates: string[], mode?: "merge" | "replace") => Promise<void>;
 }
 
 export const useActivityStore = create<ActivityState>((set, get) => ({
@@ -38,6 +39,15 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   recordActivity: async (date = new Date()) => {
     if (!get().hydrated) await get().hydrate();
     const next = [...new Set([...get().dates, localDateKey(date)])].sort();
+    set({ dates: next });
+    await activityStorage.setItem(STORAGE_KEY, next);
+  },
+  importDates: async (incoming, mode = "merge") => {
+    if (!get().hydrated) await get().hydrate();
+    const valid = incoming.filter(item => typeof item === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item));
+    const next = mode === "replace"
+      ? [...new Set(valid)].sort()
+      : [...new Set([...get().dates, ...valid])].sort();
     set({ dates: next });
     await activityStorage.setItem(STORAGE_KEY, next);
   },

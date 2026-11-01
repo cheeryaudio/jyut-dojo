@@ -41,3 +41,9 @@ jobs:
       - name: Assemble debug APK
         working-directory: android
         run: ./gradlew assembleDebug
+
+      - name: Upload Android Debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JyutDojo-Android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk

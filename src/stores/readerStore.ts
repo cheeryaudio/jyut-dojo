@@ -15,6 +15,7 @@ interface ReaderState {
   hydrate: () => Promise<void>;
   answerQuestion: (readerId: string, questionId: string, answer: string) => Promise<void>;
   completeReader: (readerId: string) => Promise<void>;
+  importReaderData: (progress: unknown, mode?: "merge" | "replace") => Promise<void>;
 }
 
 const storage = localforage.createInstance({
@@ -24,7 +25,7 @@ const storage = localforage.createInstance({
 });
 const STORAGE_KEY = "life-readers:v1";
 
-function readProgress(value: unknown): Record<string, ReaderProgress> {
+export function readProgress(value: unknown): Record<string, ReaderProgress> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const result: Record<string, ReaderProgress> = {};
   for (const [id, raw] of Object.entries(value)) {
@@ -107,6 +108,12 @@ export const useReaderStore = create<ReaderState>((set, get) => {
       } catch {
         set({ storageError: "短读已在当前页面标为读完，但未能更新本机学习日历。" });
       }
+    },
+    importReaderData: async (rawProgress, mode = "merge") => {
+      await get().hydrate();
+      const sanitized = readProgress(rawProgress);
+      set({ progress: mode === "replace" ? sanitized : { ...get().progress, ...sanitized } });
+      await persist();
     },
   };
 });

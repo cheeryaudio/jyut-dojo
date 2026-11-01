@@ -28,19 +28,26 @@ describe("life course storage upgrades", () => {
     expect(useCourseStore.getState().storageError).not.toBe("");
     expect(setItem).not.toHaveBeenCalled();
   });
-  it("serializes quick answers and saves self-reported recall without changing course completion", async () => {
+  it("serializes quick answers and saves FSRS-scheduled recall without changing course completion", async () => {
     getItem.mockResolvedValue(null);
     const { useCourseStore } = await import("./courseStore");
     await Promise.all([
       useCourseStore.getState().answerExercise("course", "q1", "first"),
       useCourseStore.getState().answerExercise("course", "q2", "second"),
     ]);
-    await useCourseStore.getState().recordPhraseReview("phrase", false);
+    const now = new Date("2026-11-02T00:00:00.000Z");
+    await useCourseStore.getState().recordPhraseReview("phrase", false, now);
+    await useCourseStore.getState().recordPhraseReview("phrase-easy", "easy", now);
     const saved = setItem.mock.calls.at(-1)?.[1];
     expect(saved.progress.course.answers).toEqual({ q1: "first", q2: "second" });
     expect(saved.progress.course.completedAt).toBeUndefined();
     expect(saved.phraseReviews.phrase.remembered).toBe(false);
-    expect(recordActivity).toHaveBeenCalledOnce();
+    expect(saved.phraseReviews.phrase.rating).toBe("again");
+    expect(saved.phraseReviews.phrase.due).toBe("2026-11-02T00:10:00.000Z");
+    expect(saved.phraseReviews["phrase-easy"].remembered).toBe(true);
+    expect(saved.phraseReviews["phrase-easy"].rating).toBe("easy");
+    expect(saved.phraseReviews["phrase-easy"].stability).toBeGreaterThan(2);
+    expect(recordActivity).toHaveBeenCalledTimes(2);
   });
   it("keeps the original completion date when a completed lesson is reread", async () => {
     getItem.mockResolvedValue({ progress: { course: { openedAt: "2026-10-17", completedAt: "2026-10-17T10:00:00.000Z", answers: {} } }, bookmarks: [], lastCourseId: "course" });
